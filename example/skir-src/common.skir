@@ -1,0 +1,3 @@
+struct Address {
+  city: string = 0;
+}

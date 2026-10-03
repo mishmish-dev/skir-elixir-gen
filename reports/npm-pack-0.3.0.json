@@ -1,0 +1,216 @@
+[
+  {
+    "id": "skir-elixir-gen@0.3.0",
+    "name": "skir-elixir-gen",
+    "version": "0.3.0",
+    "size": 48697,
+    "unpackedSize": 171182,
+    "shasum": "13589f4a48193bc622f078966a716804e6a2200c",
+    "integrity": "sha512-4SxA/0tlFQeSF+f+3y40IkZLM/89sL+sgHxFVGo9NPwMAm5FZRDKph+m6M/7s/Ex4nnEUYoSd89TYXc9H/qa4g==",
+    "filename": "skir-elixir-gen-0.3.0.tgz",
+    "files": [
+      {
+        "path": "LICENSE",
+        "size": 1085,
+        "mode": 420
+      },
+      {
+        "path": "README.md",
+        "size": 15042,
+        "mode": 420
+      },
+      {
+        "path": "VERIFICATION.md",
+        "size": 5243,
+        "mode": 420
+      },
+      {
+        "path": "docs/DESIGN.md",
+        "size": 2460,
+        "mode": 420
+      },
+      {
+        "path": "docs/PLAN.md",
+        "size": 2547,
+        "mode": 420
+      },
+      {
+        "path": "docs/SKIRRPC_PARITY.md",
+        "size": 5913,
+        "mode": 420
+      },
+      {
+        "path": "docs/SKIRRPC.md",
+        "size": 7813,
+        "mode": 420
+      },
+      {
+        "path": "package.json",
+        "size": 1397,
+        "mode": 420
+      },
+      {
+        "path": "runtime/lib/skir.ex",
+        "size": 4578,
+        "mode": 420
+      },
+      {
+        "path": "runtime/lib/skir/binary.ex",
+        "size": 8764,
+        "mode": 420
+      },
+      {
+        "path": "runtime/lib/skir/codec.ex",
+        "size": 11229,
+        "mode": 420
+      },
+      {
+        "path": "runtime/lib/skir/error.ex",
+        "size": 760,
+        "mode": 420
+      },
+      {
+        "path": "runtime/lib/skir/limits.ex",
+        "size": 5613,
+        "mode": 420
+      },
+      {
+        "path": "runtime/lib/skir/primitive.ex",
+        "size": 5308,
+        "mode": 420
+      },
+      {
+        "path": "runtime/lib/skir/rpc.ex",
+        "size": 4263,
+        "mode": 420
+      },
+      {
+        "path": "runtime/lib/skir/rpc/http_client.ex",
+        "size": 525,
+        "mode": 420
+      },
+      {
+        "path": "runtime/lib/skir/rpc/httpc.ex",
+        "size": 2254,
+        "mode": 420
+      },
+      {
+        "path": "runtime/lib/skir/rpc/plug.ex",
+        "size": 2882,
+        "mode": 420
+      },
+      {
+        "path": "runtime/lib/skir/rpc/service_client.ex",
+        "size": 7333,
+        "mode": 420
+      },
+      {
+        "path": "runtime/lib/skir/rpc/service.ex",
+        "size": 13424,
+        "mode": 420
+      },
+      {
+        "path": "runtime/lib/skir/rpc/type_descriptor.ex",
+        "size": 3786,
+        "mode": 420
+      },
+      {
+        "path": "runtime/lib/skir/types.ex",
+        "size": 618,
+        "mode": 420
+      },
+      {
+        "path": "runtime/LICENSE",
+        "size": 1085,
+        "mode": 420
+      },
+      {
+        "path": "runtime/mix.exs",
+        "size": 482,
+        "mode": 420
+      },
+      {
+        "path": "runtime/README.md",
+        "size": 1606,
+        "mode": 420
+      },
+      {
+        "path": "runtime/test/rpc_plug_test.exs",
+        "size": 1774,
+        "mode": 420
+      },
+      {
+        "path": "runtime/test/rpc_test.exs",
+        "size": 15267,
+        "mode": 420
+      },
+      {
+        "path": "runtime/test/test_helper.exs",
+        "size": 15,
+        "mode": 420
+      },
+      {
+        "path": "runtime/test/validation_test.exs",
+        "size": 1037,
+        "mode": 420
+      },
+      {
+        "path": "runtime/test/wire_test.exs",
+        "size": 1558,
+        "mode": 420
+      },
+      {
+        "path": "scripts/configure-example.mjs",
+        "size": 712,
+        "mode": 420
+      },
+      {
+        "path": "scripts/generate-fixtures.mjs",
+        "size": 823,
+        "mode": 420
+      },
+      {
+        "path": "scripts/integration.mjs",
+        "size": 6744,
+        "mode": 420
+      },
+      {
+        "path": "scripts/interop.exs",
+        "size": 2945,
+        "mode": 420
+      },
+      {
+        "path": "scripts/rpc-parity.exs",
+        "size": 2362,
+        "mode": 420
+      },
+      {
+        "path": "scripts/rpc-parity.mjs",
+        "size": 6276,
+        "mode": 420
+      },
+      {
+        "path": "src/generator.js",
+        "size": 13001,
+        "mode": 420
+      },
+      {
+        "path": "src/index.d.ts",
+        "size": 162,
+        "mode": 420
+      },
+      {
+        "path": "src/index.js",
+        "size": 360,
+        "mode": 420
+      },
+      {
+        "path": "src/naming.js",
+        "size": 2136,
+        "mode": 420
+      }
+    ],
+    "entryCount": 40,
+    "bundled": []
+  }
+]

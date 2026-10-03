@@ -1,0 +1,11 @@
+struct Node {
+  value: string = 0;
+  next: Node? = 1;
+  children: [Node] = 2;
+}
+
+// The native Elixir generator represents the recursive default with a finite
+// :skir_default sentinel, rather than constructing an infinite value.
+struct Loop {
+  next: Loop = 0;
+}

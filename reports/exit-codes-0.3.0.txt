@@ -1,0 +1,8 @@
+npm run check: 0
+node --check scripts/test: 0
+npm run generate:fixtures: 0
+npm test: 0 (45 passed)
+npm run test:runtime: 127
+npm run test:rpc-parity: 1
+apt-get update (20s timeout): 124
+npm install (25s timeout): 124

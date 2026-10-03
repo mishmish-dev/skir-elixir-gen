@@ -1,0 +1,38 @@
+name: Native Skir Elixir
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - elixir: '1.14.5'
+            otp: '25.3'
+          - elixir: '1.18.4'
+            otp: '27.3'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ matrix.elixir }}
+          otp-version: ${{ matrix.otp }}
+      - name: Install dependencies
+        run: |
+          npm install --ignore-scripts
+          mix local.hex --force
+          mix local.rebar --force
+      - name: Generator, native runtime, and upstream interoperability
+        run: npm run test:all
+      - name: Preserve reference vectors on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: interop-${{ matrix.elixir }}
+          path: .artifacts/
+          if-no-files-found: ignore

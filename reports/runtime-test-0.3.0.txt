@@ -1,0 +1,5 @@
+
+> skir-elixir-gen@0.3.0 test:runtime
+> cd runtime && mix deps.get && mix test
+
+sh: 1: mix: not found

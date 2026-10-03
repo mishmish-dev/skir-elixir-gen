@@ -1,0 +1,30 @@
+import { Address } from "common.skir";
+
+struct User {
+  id: int64 = 0;
+  removed 1;
+  name: string = 2;
+  active: bool = 3;
+  nickname: string? = 4;
+  pets: [Pet] = 5;
+  address: Address = 6;
+  avatar: bytes = 7;
+  created_at: timestamp = 8;
+  status: Event = 9;
+
+  struct Pet {
+    name: string = 0;
+    picture: string = 1;
+  }
+}
+
+enum Event {
+  connected = 1;
+  user_created: User = 2;
+  removed 3, 4;
+  message: string = 5;
+}
+
+const ALICE: User = {| id: 42, name: "Alice" |};
+// Load one user.
+method GetUser(int64): User = 12345;
