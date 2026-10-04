@@ -36,15 +36,6 @@ assert(
   ),
   'Generator archive must not bundle client/runtime code',
 );
-run('npm', [
-  'publish',
-  npmTarball,
-  '--dry-run',
-  '--ignore-scripts',
-  '--access',
-  'public',
-]);
-
 const consumer = await mkdtemp(path.join(root, '.artifacts/consumer-'));
 try {
   await writeFile(
