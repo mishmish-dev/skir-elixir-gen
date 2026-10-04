@@ -10,7 +10,7 @@ defmodule Skir.Limits do
     ctx = Map.merge(@defaults, %{format: mode, path: [], depth: 0, unknown_fields: policy})
     unless Keyword.keyword?(opts), do: Error.fail(ctx, :invalid_options, "expected keyword options")
     Enum.each(opts, fn {key, _} ->
-      unless key in @keys, do: Error.fail(ctx, :invalid_options, "unknown option #{inspect(key)}")
+      unless Enum.member?(@keys, key), do: Error.fail(ctx, :invalid_options, "unknown option #{inspect(key)}")
     end)
     ctx = Map.merge(ctx, Map.new(opts))
     allowed = if mode == :binary, do: [:binary], else: [:dense, :readable]
