@@ -1,5 +1,3 @@
-# Deterministic, bounded mutation checks of the installed runtime and generated schemas.
-# Valid mutations are allowed; only unstable results, unexpected failures or hangs fail.
 defmodule Skir.MalformedInputChecks do
   alias Example.Protocol.UserSkir.{User, Event}
   alias Example.Protocol.TreeSkir.{Node, Loop}

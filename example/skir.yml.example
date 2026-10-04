@@ -1,5 +1,3 @@
-# For a registry/local npm installation. The example's `npm run configure`
-# command instead creates skir.yml with an absolute file URL for the local source.
 generators:
   - mod: skir-elixir-gen
     outDir: ./lib/skirout

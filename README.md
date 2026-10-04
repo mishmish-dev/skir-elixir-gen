@@ -40,16 +40,14 @@ generators:
 ```
 
 Run `npx skir gen` before `mix compile`. Node is required for generation,
-not for running the generated Elixir code. Skir manages directories named
-`skirout`; do not put hand-written files there. Keep any other language
-generators in the same configuration so they share the same schemas.
+not for running the generated Elixir code.
 
 `namespace` is the only generator option. It defaults to `Skir.Generated` and
 must be an Elixir module namespace.
 
 ## Elixir generated-code guide
 
-The examples below use [the example schema](https://github.com/mishmish-dev/skir-elixir-gen/blob/main/example/skir-src/user.skir) with
+The examples below use [the example schema](example/skir-src/user.skir) with
 `namespace: Example.Protocol`. Follow the same pattern with your own namespace.
 
 ### Referring to generated symbols
@@ -64,12 +62,6 @@ alias Example.Protocol.UserSkir.{User, Event}
 # A nested User.Pet record has its own module.
 alias Example.Protocol.UserSkir.User.Pet
 ```
-
-For `accounts/user.skir` and `namespace: MyApp.Protocol`, the record module is
-`MyApp.Protocol.Accounts.UserSkir.User`. A nested `User.Pet` becomes
-`MyApp.Protocol.Accounts.UserSkir.User.Pet`. Constants and methods are functions
-on the source-file module, for example `UserSkir.alice_const/0` and
-`UserSkir.get_user_method/0`.
 
 GitHub schema dependencies use Skir's normal [`dependencies` configuration](https://skir.build/docs/dependencies),
 including transitive imports. An import from `@acme/shared-models/accounts/user.skir`
@@ -118,7 +110,7 @@ family = User.new(nickname: "Al", pets: [Pet.new(name: "Mo")])
 ```
 
 Keyed arrays also generate `index_<field>/1` helpers. These return a map and raise
-`ArgumentError` on duplicate keys. See [native API examples](https://github.com/mishmish-dev/skir-elixir-gen/blob/main/example/test/generated_api_test.exs)
+`ArgumentError` on duplicate keys. See [native API examples](example/test/generated_api_test.exs)
 for nested key paths and enum-kind indexes.
 
 ### Enum types
@@ -245,18 +237,28 @@ Descriptors include nested types, field numbers, enum variants, documentation,
 and removed slots. `User.type/0` is the public type handle; `schema/0` is internal
 codec metadata. See the [runtime API reference](https://hexdocs.pm/skir_elixir_client).
 
-## Compatibility and documentation
+## Tests and benchmarks
 
-This unofficial backend targets Skir schemas, serialization and the SkirRPC wire
-contract. It supports local and GitHub dependency imports. Streaming is outside
-the current SkirRPC protocol. Generator and runtime versions are independent;
-the example and CI select Hex 0.2.1 through the lockfile, incorporating the two
-RPC resource-limit fixes. Review the [security findings](docs/SECURITY_REVIEW.md)
-and validate your application deployment before production adoption.
+```sh
+npm ci
+mix local.hex
+mix local.rebar
+npm run test:all
+```
 
-- [Runtime codecs and schema evolution](https://github.com/mishmish-dev/skir-elixir-client/blob/main/docs/CODECS.md)
+`test:all` runs syntax, lint, formatting, coverage, compiler/runtime integration,
+malformed-input and npm package checks. Use `npm test` for just the Node generator tests.
+
+Run codec benchmarks separately:
+
+```sh
+npm run test:benchmark
+```
+
+This builds an OTP release and measures binary and JSON encoding/decoding.
+Five-sample median throughput and environment details are saved to
+`.artifacts/release-benchmark.json`.
+
+## See also
+
 - [Runtime API reference](https://hexdocs.pm/skir_elixir_client)
-- [Development and tests](README.dev.md)
-- [Verification scope](VERIFICATION.md)
-- [Release instructions](docs/RELEASING.md)
-- [Security review](docs/SECURITY_REVIEW.md)

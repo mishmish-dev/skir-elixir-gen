@@ -1,4 +1,3 @@
-/** Naming and source escaping. Never use wire input to create Elixir atoms. */
 export function snake(value) {
   return value
     .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')

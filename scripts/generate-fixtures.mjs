@@ -1,5 +1,3 @@
-// Dependency-free generator smoke fixture. This deliberately does NOT pretend
-// to parse Skir: integration.mjs tests the real compiler separately.
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';

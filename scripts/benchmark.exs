@@ -1,4 +1,3 @@
-# Executed by the release binary via eval, never by mix run.
 defmodule Skir.ReleaseBenchmark do
   alias Example.Protocol.UserSkir.{User, Event}
   alias Example.Protocol.TreeSkir.Node

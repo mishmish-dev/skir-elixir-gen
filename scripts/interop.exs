@@ -1,6 +1,4 @@
 defmodule Skir.Interop do
-  # This script consumes vectors produced by the actual upstream Skir runtime.
-  # Never use String.to_atom on the test vector's arbitrary JSON strings.
   @primitive_names ~w(bool int32 int64 hash64 float32 float64 timestamp string bytes)
   @primitive_atoms [
     :bool,

@@ -1,4 +1,3 @@
-/** Install and execute the actual npm generator distribution in a fresh project. */
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -68,8 +67,6 @@ try {
     path.join(consumer, 'skir-src/message.skir'),
     'import { User } from "@acme/models/accounts/user.skir"; struct Message { text: string; user: User; } const GUEST: User = { address: { city: "London" }, pets: [] }; method GetUser(int64): User = 12345;\n',
   );
-  // Use the compiler's dependency cache to exercise imports without live GitHub.
-  // The models package depends on base, testing transitive resolution as well.
   await mkdir(path.join(consumer, 'skir-external'));
   await writeFile(
     path.join(consumer, 'skir-external/dependencies.json'),

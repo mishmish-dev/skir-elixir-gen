@@ -22,7 +22,6 @@ end
 
 case System.argv() do
   ["defaults"] ->
-    # Touch the opposite member first, before any serializer or reflection call.
     unless RecB.to_json!(RecB.default()) == [] and RecA.to_json!(RecA.default()) == [],
       do: raise("recursive defaults mismatch")
 

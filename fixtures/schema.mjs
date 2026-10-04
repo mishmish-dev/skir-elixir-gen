@@ -1,4 +1,3 @@
-// Resolved-IR fixtures, shaped after skir-internal 0.2.21. These are not a parser.
 export const primitive = (primitive) => ({ kind: 'primitive', primitive });
 export const optional = (other) => ({ kind: 'optional', other });
 export const array = (item, key) => ({ kind: 'array', item, key });

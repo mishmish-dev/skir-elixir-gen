@@ -40,7 +40,6 @@ defmodule Skir.GoldenAssertions do
   end
 
   defp decode_expression(tag, expr) do
-    # All tags are generated from the trusted schema, never from wire input.
     [record, operation] = tag |> Atom.to_string() |> String.split("_from_", parts: 2)
     [format, policy] = String.split(operation, "_", parts: 2)
     mod = Map.fetch!(@records, String.to_existing_atom(record))

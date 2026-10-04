@@ -1,6 +1,3 @@
-/** Real compiler + reference-runtime test. No mocks and no silent skips.
- * Requires `npm install`, Elixir/Mix, and fetched Mix dependencies.
- */
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -25,8 +22,6 @@ const cli =
   typeof skirPackage.bin === 'string' ? skirPackage.bin : skirPackage.bin.skir;
 run(process.execPath, [path.join(skirDir, cli), 'gen'], example);
 
-// Generation above must go through the installed compiler. Do not replace it
-// with the fixture generator: this gate is what detects upstream IR drift.
 const { User, Event } = await import(
   pathToFileURL(path.join(example, 'reference/skirout/user.js'))
 );
@@ -121,7 +116,6 @@ add('bytes', [
 add(['optional', 'string'], [null, '', 'name', 0]);
 add(['array', 'int32'], [[], [1], [1, 2], [1, 2, 3], [1, 2, 3, 4]]);
 add(['array', ['optional', 'User']], [[], [null, [], [42, 0, 'Alice']]]);
-// Deterministic generated cases: failures can be reproduced without a fuzzer.
 let seed = 0x534b4952;
 const random = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0);
 for (let i = 0; i < 128; i++) {

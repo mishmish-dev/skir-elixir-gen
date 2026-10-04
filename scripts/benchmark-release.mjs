@@ -1,4 +1,3 @@
-/** Build and measure a real OTP release; requires generated/compiler dependencies. */
 import { spawnSync } from 'node:child_process';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';

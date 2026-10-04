@@ -5,7 +5,6 @@ deps/
 *.tgz
 .DS_Store
 
-# Keep local configuration and credentials out of Git.
 .env
 .env.*
 !.env.example
