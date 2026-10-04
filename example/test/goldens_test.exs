@@ -93,11 +93,11 @@ defmodule Skir.GoldenAssertions do
     ]
 
     for v <- variants do
-      assert Skir.to_json!(t, v) in Enum.map(a.expected_dense_json, &Jason.decode!/1)
+      assert Skir.to_json!(t, v) in Enum.map(a.expected_dense_json, &JSON.decode!/1)
 
       assert Skir.to_json!(t, v, format: :readable) in Enum.map(
                a.expected_readable_json,
-               &Jason.decode!/1
+               &JSON.decode!/1
              )
 
       assert Skir.encode!(t, v) in a.expected_bytes
@@ -105,12 +105,12 @@ defmodule Skir.GoldenAssertions do
 
     for expr <- a.alternative_jsons do
       parsed = Skir.decode_json!(t, string(expr), unknown_fields: :preserve)
-      assert Skir.to_json!(t, parsed) in Enum.map(a.expected_dense_json, &Jason.decode!/1)
+      assert Skir.to_json!(t, parsed) in Enum.map(a.expected_dense_json, &JSON.decode!/1)
     end
 
     for json <- a.expected_dense_json ++ a.expected_readable_json do
       parsed = Skir.decode_json!(t, json, unknown_fields: :preserve)
-      assert Skir.to_json!(t, parsed) in Enum.map(a.expected_dense_json, &Jason.decode!/1)
+      assert Skir.to_json!(t, parsed) in Enum.map(a.expected_dense_json, &JSON.decode!/1)
     end
 
     for encoded <- a.expected_bytes ++ Enum.map(a.alternative_bytes, &bytes/1) do
@@ -129,7 +129,7 @@ defmodule Skir.GoldenAssertions do
       expected =
         a.expected_type_descriptor
         |> String.replace("@gepheum/skir-golden-tests/", "")
-        |> Jason.decode!()
+        |> JSON.decode!()
 
       assert Skir.RPC.TypeDescriptor.to_map(t) == expected
     end

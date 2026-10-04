@@ -1,6 +1,6 @@
 {
   "name": "skir-elixir-gen",
-  "version": "0.3.0",
+  "version": "0.1.0",
   "description": "Native Elixir code generation for Skir schemas",
   "type": "module",
   "license": "MIT",
@@ -17,6 +17,7 @@
     "src",
     "docs/RELEASING.md",
     "README.md",
+    "README.dev.md",
     "VERIFICATION.md",
     "LICENSE"
   ],

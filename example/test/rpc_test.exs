@@ -23,7 +23,7 @@ defmodule Example.RPCTest do
   test "service list endpoint exposes generated method schema" do
     response = Service.handle_request(Example.RPC.service(), "list")
     assert response.status_code == 200
-    [method] = Jason.decode!(response.data)["methods"]
+    [method] = JSON.decode!(response.data)["methods"]
     assert method["method"] == "GetUser"
     assert method["number"] == 12_345
     assert method["request"]["type"] == %{"kind" => "primitive", "value" => "int64"}

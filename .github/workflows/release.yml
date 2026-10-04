@@ -1,7 +1,7 @@
 name: Release
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -10,29 +10,36 @@ concurrency:
   cancel-in-progress: false
 jobs:
   validate:
-    if: github.event_name == 'workflow_dispatch' || (!github.event.release.draft && !github.event.release.prerelease)
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      changed: ${{ steps.version.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 20.x
-      - name: Validate stable release tag
-        env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+      - name: Validate release version
+        id: version
         run: |
-          version=$(node -p 'JSON.parse(require("fs").readFileSync("package.json", "utf8")).version')
-          if [ "$GITHUB_EVENT_NAME" = release ]; then
-            test "$RELEASE_TAG" = "v$version" || { echo '::error::Release tag must match package.json version (vX.Y.Z)'; exit 1; }
-            node -e 'if (!/^\d+\.\d+\.\d+$/.test(require("./package.json").version)) process.exit(1)'
-          fi
+          version=$(node -p 'require("./package.json").version')
+          test "$GITHUB_REF" = refs/heads/main || { echo '::error::Run Release from main'; exit 1; }
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo '::error::Version must be X.Y.Z'; exit 1; }
+          last_tag=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || true)
+          changed=true
+          if [ "$last_tag" = "v$version" ]; then changed=false; fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          echo "Version: $version; latest release tag: ${last_tag:-none}; changed: $changed" >> "$GITHUB_STEP_SUMMARY"
   checks:
     needs: validate
+    if: needs.validate.outputs.changed == 'true'
     uses: ./.github/workflows/ci.yml
     secrets: inherit
   npm:
     needs: checks
-    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -43,7 +50,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: interop-otp-29.1.1-elixir-1.20.4
-          path: .artifacts/packages
+          path: .artifacts
       - name: Publish tested npm tarball
         env:
           NODE_AUTH_TOKEN: ${{ secrets.npm_token }}
@@ -51,3 +58,25 @@ jobs:
           test -n "$NODE_AUTH_TOKEN" || { echo '::error::Missing npm_token publishing secret'; exit 1; }
           version=$(node -p 'require("./package.json").version')
           npm publish ".artifacts/packages/skir-elixir-gen-$version.tgz" --ignore-scripts --access public
+  github-release:
+    needs: [validate, npm]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create version tag and GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          if tag_sha=$(gh api "repos/$GH_REPO/git/ref/tags/v$RELEASE_VERSION" --jq .object.sha 2>/dev/null); then
+            test "$tag_sha" = "$GITHUB_SHA" || { echo '::error::Release tag points to another commit'; exit 1; }
+          else
+            gh api --method POST "repos/$GH_REPO/git/refs" \
+              -f "ref=refs/tags/v$RELEASE_VERSION" -f "sha=$GITHUB_SHA"
+          fi
+          if ! gh release view "v$RELEASE_VERSION" >/dev/null 2>&1; then
+            gh release create "v$RELEASE_VERSION" --verify-tag \
+              --title "skir-elixir-gen v$RELEASE_VERSION" --generate-notes
+          fi

@@ -135,7 +135,7 @@ defmodule SkirTest do
       assert Skir.default(type) == expected
     end
 
-    descriptor = Skir.RPC.TypeDescriptor.to_json({:optional, User.type()}) |> Jason.decode!()
+    descriptor = Skir.RPC.TypeDescriptor.to_json({:optional, User.type()}) |> JSON.decode!()
 
     assert descriptor["type"] == %{
              "kind" => "optional",

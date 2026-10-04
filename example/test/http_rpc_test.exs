@@ -66,7 +66,7 @@ defmodule Skir.HTTPRPCTest do
              )
 
     assert {~c"content-type", ~c"application/json"} in headers
-    methods = Jason.decode!(body)["methods"]
+    methods = JSON.decode!(body)["methods"]
     assert Enum.map(methods, & &1["number"]) == [12345, 23456]
     method = Enum.find(methods, &(&1["number"] == 12345))
     assert method["number"] == 12345

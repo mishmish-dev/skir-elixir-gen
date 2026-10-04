@@ -7,15 +7,17 @@
 
 An unofficial Skir compiler plugin that emits native Elixir structs, enums,
 codecs, constants, reflection and RPC helpers. Generated code uses the separate
-[skir_elixir_client](https://github.com/mishmish-dev/skir-elixir-client) Mix package.
-This repository contains no runtime source or runtime unit tests.
+[skir_elixir_client](https://hex.pm/packages/skir_elixir_client) Hex package.
 
 ## Set up
+
+Requires Node 20+ for generation, and Elixir 1.18+ with Erlang/OTP 27+ for the
+runtime. The runtime uses built-in `JSON` and has no production dependencies.
 
 Add the runtime dependency to your application's `mix.exs`:
 
 ```elixir
-{:skir_elixir_client, "~> 0.3"}
+{:skir_elixir_client, "~> 0.2.0"}
 ```
 
 The Hex package is `skir_elixir_client`; its Mix application is `:skir_elixir_client`, and
@@ -90,6 +92,7 @@ The same source module also exposes native SkirRPC helpers. For the example
 
 ```elixir
 alias Example.Protocol.UserSkir
+alias Example.Protocol.UserSkir.User
 alias Skir.RPC.{Service, ServiceClient}
 
 service =
@@ -108,7 +111,7 @@ Skir.RPC.Plug, service: &MyApp.RPC.service/0`. Studio (`?studio`), method
 reflection (`?list`), controlled/unknown errors, request metadata, the compact
 SkirRPC HTTP wire format, and a pluggable client transport are implemented. See
 [the client RPC guide](https://hexdocs.pm/skir_elixir_client/skirrpc.html) for the complete API and
-[the client parity audit](https://github.com/mishmish-dev/skir-elixir-client/blob/main/docs/SKIRRPC_PARITY.md) for the official-runtime parity audit.
+[the client parity audit](https://hexdocs.pm/skir_elixir_client/skirrpc_parity.html) for the official-runtime parity audit.
 
 ### Generated function reference
 
@@ -259,7 +262,8 @@ are errors.
 
 Wire decoders bound input bytes, nesting, collection lengths, and aggregate
 parsed nodes, and reject trailing binary bytes. JSON nesting is pre-scanned
-before Jason builds a tree. UTF-8, base64, numbers and payload shapes are checked.
+before built-in `JSON` builds a tree. UTF-8, base64, numbers and payload shapes
+are checked.
 These are defensive measures, **not a completed security audit or a substitute
 for HTTP body/time limits**. Native `to_json/3` receives an already-allocated
 application tree; its byte limits on terms are not a wire-size guarantee for the
@@ -272,109 +276,9 @@ calendar range, readable output contains `unix_millis` without `formatted`.
 
 ## Development
 
-Clone both repositories as siblings and select the client revision used by CI:
-
-```sh
-git clone https://github.com/mishmish-dev/skir-elixir-gen.git
-git clone https://github.com/mishmish-dev/skir-elixir-client.git
-cd skir-elixir-gen
-git -C ../skir-elixir-client checkout "$(cat .client-revision)"
-npm ci --ignore-scripts
-mix local.hex --force
-mix local.rebar --force
-npm run test:all
-```
-
-Requires Node 20+, Elixir and Mix. CI pins Elixir 1.20.4 and OTP 27.3.4.18,
-28.5.0.7 and 29.1.1. The private client checkout uses a read-only deploy key.
-Generator and runtime versions are independent; npm and Hex releases are owned
-by their respective repositories. See [release instructions](docs/RELEASING.md).
-
-## Layout
-
-- `src/`: npm plugin and generator core.
-- `example/`: schemas, generated bindings and 127 binding/integration tests.
-- `test/`: four table-driven Node generator tests.
-- `fixtures/upstream/`: pinned upstream golden corpus provenance and license.
-- `scripts/integration.mjs`: real compiler and 209 TypeScript interoperability vectors.
-- `scripts/package-smoke.mjs`: fresh consumer of the actual npm archive.
-
-Runtime unit tests and the raw RPC oracle belong to the client repository.
-See [VERIFICATION.md](VERIFICATION.md) for coverage scope and compatibility limits.
-
-## Run the example
-
-From the cloned generator repository, on a machine with Node, Elixir and Mix:
-
-```sh
-npm ci --ignore-scripts
-mix local.hex --force
-mix local.rebar --force
-
-# Uses the real Skir compiler; also emits the TypeScript reference binding.
-npm run generate
-
-cd example
-mix deps.get
-iex -S mix
-```
-
-`npm run generate` first writes a machine-specific `example/skir.yml` with an
-absolute `file:` URL for this local plugin. Do not commit that generated config.
-It then invokes `skir gen` in `example/`. Skir manages directories named
-`skirout`; do not put hand-written files there.
-
-## Tests
-
-```sh
-# Requires npm dependencies; exercises the generator and plugin configuration.
-npm test
-npm run test:coverage
-npm run check
-npm run generate:fixtures
-
-# Requires Elixir and access to Hex for runtime and test-only HTTP dependencies.
-npm run test:elixir
-
-# Requires npm dependencies, Elixir and Hex. Uses real .skir input, not the IR fixture.
-npm run test:integration
-
-# Full gate, used by the included CI definition.
-npm run test:all
-```
-
-`generate:fixtures` intentionally uses a hand-built resolved-IR fixture, not a
-Skir parser. Both `test:elixir` and the integration command regenerate example outputs using
-the real compiler. Integration compiles the native modules with warnings-as-errors, runs the
-127 example tests once, and exchanges JSON and byte-for-byte binary vectors with the
-upstream TypeScript runtime. It includes deterministic generated cases and
-unknown-data preservation. A missing tool is a failure, never a skipped success.
-It writes `.artifacts/reference-vectors.json` and `.artifacts/elixir-vectors.json`.
-
-The example suite runs all 101 cases from the unmodified upstream golden corpus
-[v1.0.6](https://github.com/gepheum/skir-golden-tests/tree/v1.0.6), including
-infinities and large collections. JSON expectations compare decoded terms; binary
-expectations remain byte-for-byte. Four cross-format unknown-field cases also
-check Elixir's `:unknown_format` error before explicitly discarding the retained
-fields. Only the repository prefix in reflection IDs is translated for the
-vendored schema. See [fixture provenance](fixtures/upstream/skir-golden-tests/README.md).
-
-Additional real schemas test constructors, updates, defaults, nested names,
-keyed arrays, constants, and recursive types. A test-only Cowboy server on an
-OS-assigned localhost port exercises generated GET/POST clients through OTP
-`:httpc`, errors, metadata, and reflection. Four fresh BEAM processes test
-recursive defaults, codecs, reflection, and concurrent initialization. The concurrent scenario
-releases workers together after a readiness barrier and mixes first access to
-defaults, codecs, and descriptors. These checks run through `test:elixir`,
-`test:all`, and every CI matrix entry.
-
-The full gate reports JavaScript coverage with Node and Elixir line coverage
-with Mix. Mix enforces a 90% threshold for handwritten example code; generated
-`Example.Protocol.*` modules are excluded. The client dependency is not
-instrumented here and its unit tests are not included in this suite. Generated
-bindings are checked by the golden and native API tests. Fresh BEAM subprocesses
-do not contribute to the parent coverage report. CI uploads coverage and
-reference vectors for every matrix entry.
+See [development and tests](README.dev.md), [verification scope](VERIFICATION.md),
+and [release instructions](docs/RELEASING.md). The example and CI pin the runtime
+exactly to Hex 0.2.0; generator and runtime versions are independent.
 
 ## Current boundaries / release gate
 
@@ -386,20 +290,21 @@ currently rejected; vendor those schemas as local paths before generation.
 Native SkirRPC transport, generated client/server helpers, Phoenix/Plug routing,
 Studio, and reflection are included. The SkirRPC surface has been source-audited
 against the official TypeScript, Dart, and Gleam runtimes; where TypeScript and
-Dart agree, 0.3.0 treats that behavior as the compatibility baseline. The
+Dart agree, the runtime treats that behavior as the compatibility baseline. The
 executable TypeScript ↔ Elixir raw-response oracle runs in the client repository.
 
 Not included: streaming RPC (not part of the current SkirRPC wire protocol), OTP
 release benchmarking, a live Dart ↔ Phoenix interoperability run, or independent
 security/fuzz review. One current upstream TypeScript `list` anomaly writes the
 method name into the `number` field; Elixir intentionally follows the numeric-ID
-behavior used by Dart and Gleam instead. See the [client RPC parity guide](https://github.com/mishmish-dev/skir-elixir-client/blob/main/docs/SKIRRPC_PARITY.md).
+behavior used by Dart and Gleam instead. See the [client RPC parity guide](https://hexdocs.pm/skir_elixir_client/skirrpc_parity.html).
 
 Before adopting it in production, run the complete test gate on the intended
 Elixir/OTP versions, add your schemas and Dart-produced vectors, review the native
 codec implementation, and fuzz malformed inputs. Commit `package-lock.json` and
-the Mix lockfiles before releasing a reproducible production baseline. The generator is published to npm as `skir-elixir-gen`; the runtime is
-published to Hex as `skir_elixir_client`.
+the Mix lockfiles before releasing a reproducible production baseline.
+The generator is published to npm as `skir-elixir-gen`; the runtime is published
+to Hex as `skir_elixir_client`.
 
 ## Upstream references used
 

@@ -1,5 +1,7 @@
 # Verification
 
+The generator tests run against the published Hex runtime `skir_elixir_client`
+0.2.0, pinned exactly in `example/mix.exs` and `example/mix.lock`.
 The split preserves each existing test in exactly one repository.
 
 | Check | Generator | Client |
@@ -10,7 +12,7 @@ The split preserves each existing test in exactly one repository.
 | Runtime unit tests | — | 44 ExUnit tests |
 | Raw RPC oracle | — | 16 server cases plus GET/POST client wire comparisons |
 | Distribution consumer | npm archive installed in a fresh compiler project | Hex archive installed in a fresh Mix project |
-| CI | Node 20, Elixir 1.20.4, OTP 27/28/29 | Same matrix, independently |
+| CI | Node 20; Elixir 1.18.4 / OTP 27 and Elixir 1.20.4 / OTP 27/28/29 | Same matrix, independently |
 
 Generator `npm run test:all` reports JavaScript coverage. Mix coverage measures
 handwritten example code, excludes generated `Example.Protocol.*` modules and

@@ -31,7 +31,7 @@ defmodule Skir.Interop do
   end
 
   def run(input, output) do
-    vectors = input |> File.read!() |> Jason.decode!()
+    vectors = input |> File.read!() |> JSON.decode!()
 
     results =
       Enum.map(vectors, fn row ->
@@ -72,7 +72,7 @@ defmodule Skir.Interop do
         end
       end)
 
-    File.write!(output, Jason.encode!(results))
+    File.write!(output, JSON.encode!(results))
     IO.puts("Elixir validated #{length(results)} upstream reference vectors.")
   end
 
