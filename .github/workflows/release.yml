@@ -37,25 +37,26 @@ jobs:
     needs: validate
     if: needs.validate.outputs.changed == 'true'
     uses: ./.github/workflows/ci.yml
-    secrets: inherit
   npm:
     needs: checks
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: 24.x
           registry-url: https://registry.npmjs.org
+      - name: Install npm with trusted publishing support
+        run: npm install --global npm@latest
       - uses: actions/download-artifact@v4
         with:
           name: interop-otp-29.1.1-elixir-1.20.4
           path: .artifacts
       - name: Publish tested npm tarball
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.npm_token }}
         run: |
-          test -n "$NODE_AUTH_TOKEN" || { echo '::error::Missing npm_token publishing secret'; exit 1; }
           version=$(node -p 'require("./package.json").version')
           npm publish ".artifacts/packages/skir-elixir-gen-$version.tgz" --ignore-scripts --access public
   github-release:

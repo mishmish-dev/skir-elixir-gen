@@ -8,8 +8,17 @@ exactly `skir_elixir_client` 0.2.0 from Hex, pinned in `example/mix.exs` and
 
 ## Automatic releases
 
-Set the repository Actions secret `npm_token` to an npm token authorized to
-publish `skir-elixir-gen` without an interactive two-factor prompt.
+Configure a GitHub Actions trusted publisher in the npm package settings:
+
+- Organization or user: `mishmish-dev`
+- Repository: `skir-elixir-gen`
+- Workflow filename: `release.yml`
+- Environment name: leave blank (the workflow does not use a GitHub environment)
+- Allowed actions: enable direct publishing with `npm publish`
+
+The publish job uses GitHub OIDC (`id-token: write`), Node 24 and the latest npm
+CLI. It requires no npm publishing token or repository secret. See
+[npm trusted publishing](https://docs.npmjs.com/trusted-publishers/).
 
 1. Set `package.json` version and update `package-lock.json`. When changing the
    compatible runtime baseline, update the exact dependency in `example/mix.exs`
@@ -25,30 +34,16 @@ exactly the tested npm archive from the Elixir 1.20.4 / OTP 29 job. Manual workf
 dispatch from `main` follows the same version check and can publish a changed
 version. Other branches do not trigger automatic releases.
 
-The version must be stable `X.Y.Z`. An absent publishing token fails with a clear
-error. Registry publication makes the archive public even while the source
-repository is private. Never republish an existing version. If npm fails, fix
-the credentials or registry issue and rerun the failed job. If npm succeeds but
+The version must be stable `X.Y.Z`. npm archives are public. Never republish an
+existing version. If npm authentication fails, check the trusted publisher's
+repository, workflow filename and direct-publish permission, then rerun the
+failed job. If npm succeeds but
 GitHub release creation fails, rerun only that job so the package is not uploaded
 again.
 
-## Manual first release: v0.1.0
+## Initial release
 
-The initial generator version is 0.1.0; its tested runtime is Hex 0.2.0.
-From the release checkout, on Node 20+, Elixir 1.18+ and OTP 27+:
-
-```sh
-npm ci --ignore-scripts
-mix local.hex --force
-mix local.rebar --force
-npm run test:all
-npm login --registry=https://registry.npmjs.org
-npm publish ./.artifacts/packages/skir-elixir-gen-0.1.0.tgz --ignore-scripts --access public
-npm view skir-elixir-gen@0.1.0 version dist.integrity
-```
-
-Commit the tested release changes before publishing. After confirming npm
-publication, create the matching `v0.1.0` tag and GitHub release at that commit.
-Push the tag with the commit so the automatic workflow sees the published
-version and skips another npm upload. Subsequent releases use the automatic
-workflow above.
+Version 0.1.0 was published manually and tagged after publication. Subsequent
+releases use CI: bump the npm version, run the checks and push to `main`.
+Do not attempt to publish 0.1.0 again. The runtime remains independently pinned
+to Hex 0.2.0.
