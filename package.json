@@ -19,12 +19,15 @@
     "README.md",
     "README.dev.md",
     "VERIFICATION.md",
+    "docs/SECURITY_REVIEW.md",
     "LICENSE"
   ],
   "scripts": {
     "test": "node --test test/*.test.mjs",
     "check": "node --check src/generator.js && node --check src/naming.js && node --check src/index.js",
-    "test:all": "npm run check && npm run lint && npm run format:check && npm run test:coverage && npm run test:integration && npm run test:package",
+    "test:all": "npm run check && npm run lint && npm run format:check && npm run test:coverage && npm run test:integration && npm run test:fuzz && npm run test:package",
+    "test:fuzz": "npm run generate && cd example && mix deps.get --check-locked && mix run ../scripts/fuzz.exs",
+    "test:benchmark": "node scripts/benchmark-release.mjs",
     "test:coverage": "node --test --experimental-test-coverage test/*.test.mjs",
     "lint": "eslint .",
     "format:check": "prettier --check \"src/**/*.{js,ts}\" \"scripts/**/*.mjs\" \"test/**/*.mjs\" \"fixtures/*.mjs\" eslint.config.js package.json .prettierrc.json \".github/workflows/*.yml\" && mix format --check-formatted",

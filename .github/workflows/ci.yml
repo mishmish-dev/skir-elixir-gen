@@ -39,6 +39,8 @@ jobs:
           mix deps.get --check-locked
       - name: Generator tests, binding coverage, interoperability and npm consumer
         run: npm run test:all
+      - name: Benchmark native codecs in an OTP release
+        run: npm run test:benchmark
       - name: Preserve test reports and package archive
         if: always()
         uses: actions/upload-artifact@v4
