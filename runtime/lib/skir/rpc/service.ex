@@ -74,7 +74,8 @@ defmodule Skir.RPC.Service do
     do: %{service | max_request_bytes: value}
 
   @spec handle_request(t(), binary(), term()) :: RawResponse.t()
-  def handle_request(%__MODULE__{} = service, body, request_metadata \\ nil) when is_binary(body) do
+  def handle_request(service, body, request_metadata \\ nil)
+  def handle_request(%__MODULE__{} = service, body, request_metadata) when is_binary(body) do
     cond do
       byte_size(body) > service.max_request_bytes ->
         text(413, "request body too large")
@@ -317,6 +318,7 @@ defmodule Skir.RPC.Service do
 
     html = """
     <!DOCTYPE html>
+
     <html>
       <head>
         <meta charset="utf-8" />

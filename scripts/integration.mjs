@@ -48,7 +48,7 @@ add('float32', [0,1.5,-3.25,3.14159,'NaN','Infinity','-Infinity']);
 add('float64', [0,1.5,Math.PI,1e-300,1e300,'NaN','Infinity','-Infinity']);
 add('timestamp', [0,-1,1,1735689600000,-8640000000000000,8640000000000000]);
 add('string', ['', 'hello', '🌍\u0000\n"#{not_interpolation}']);
-add('bytes', ['', 'AAH/', Buffer.from(Array.from({length: 257}, (_,i) => i & 255)).toString('base64')]);
+add('bytes', ['', 'AAH/', Buffer.from(Array.from({length: 117}, (_,i) => i & 255)).toString('base64')]);
 add(['optional','string'], [null,'', 'name',0]);
 add(['array','int32'], [[],[1],[1,2],[1,2,3],[1,2,3,4]]);
 add(['array',['optional','User']], [[],[null,[],[42,0,'Alice']]]);
@@ -72,6 +72,17 @@ const vectors = cases.map(({name, type, value}) => {
   return {name, type, mode: 'all', dense: s.toJson(normalized),
     readable: s.toJson(normalized, 'readable'), binary: Buffer.from(bytes).toString('base64')};
 });
+// skir-client 1.0.19 corrupts OutputStream.putBytes when the payload crosses
+// its initial 128-byte buffer. Check long bytes against its decoder instead:
+// documented wire format = "skir", bytes marker, uint16 length, payload.
+const longPayload = Buffer.from(Array.from({length: 257}, (_, i) => i & 255));
+const longBytes = Buffer.concat([Buffer.from('skir'), Buffer.from([0xf5, 0xe8, 1, 1]), longPayload]);
+const bytesSerializer = serializer('bytes');
+const longValue = bytesSerializer.fromBytes(Uint8Array.from(longBytes).buffer);
+assert.equal(bytesSerializer.toJson(longValue), longPayload.toString('base64'));
+vectors.push({name: 'long-bytes', type: 'bytes', mode: 'all', reference_encode: false,
+  dense: bytesSerializer.toJson(longValue), readable: bytesSerializer.toJson(longValue, 'readable'),
+  binary: longBytes.toString('base64')});
 const futureUser = [42,0,'Alice',0,null,[],[],'',0,0,['future',123]];
 for (const [name,type,dense] of [['future-struct','User',futureUser],['future-enum','Event',[77,['future']]]]) {
   const s = serializer(type);
@@ -109,7 +120,9 @@ for (let i=0;i<vectors.length;i++) {
     assert.equal(actual.binary,expected.binary,`${expected.name}: byte-for-byte encoding`);
     const bytes = Uint8Array.from(Buffer.from(actual.binary,'base64')).buffer;
     const value = s.fromBytes(bytes,'keep-unrecognized-values');
-    assert.equal(Buffer.from(s.toBytes(value).toBuffer()).toString('base64'),expected.binary);
+    if (expected.reference_encode !== false) {
+      assert.equal(Buffer.from(s.toBytes(value).toBuffer()).toString('base64'),expected.binary);
+    }
   }
 }
-console.log(`PASS: ${vectors.length} bidirectional reference vectors, real Skir compiler, native Elixir runtime.`);
+console.log(`PASS: ${vectors.length} interoperability vectors, real Skir compiler, native Elixir runtime.`);

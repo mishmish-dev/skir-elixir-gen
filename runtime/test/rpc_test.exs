@@ -113,8 +113,11 @@ defmodule Skir.RPCTest do
   end
 
   test "endpoint keywords are exact and are not whitespace-trimmed" do
-    assert %{status_code: 400, data: "bad request: invalid request format"} =
+    assert %{status_code: 400, data: "bad request: invalid JSON"} =
              Service.handle_request(service(), " list ")
+
+    assert %{status_code: 400, data: "bad request: invalid request format"} =
+             Service.handle_request(service(), "list ")
   end
 
   test "controlled service errors preserve status and use standard reason phrases by default" do
@@ -210,6 +213,7 @@ defmodule Skir.RPCTest do
       raw = Service.handle_request(service(), payload)
       assert raw.status_code == 200
       assert raw.content_type == "text/html; charset=utf-8"
+      assert String.starts_with?(raw.data, "<!DOCTYPE html>\n\n<html>\n")
       assert raw.data =~ "<skir-studio-app>"
       assert raw.data =~ "skir-studio-standalone.js"
     end

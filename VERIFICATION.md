@@ -1,4 +1,38 @@
-# Verification report — 2026-10-03
+# Verification report — 2026-10-04
+
+`npm run test:all` completed successfully on Node 24.17.0 and the official
+`elixir:1.20.4` Docker image (Erlang/OTP 29). CI runs this same gate with Node 20
+and Elixir 1.20.4 on pinned OTP 27.3.4.18, 28.5.0.7, and 29.1.1 releases.
+
+| Check | Observed result |
+|---|---|
+| Generator syntax and Node tests | 45 passed, no failures or skips. |
+| Runtime ExUnit/Plug tests | 59 passed. |
+| Generated-code ExUnit tests | 24 passed with fixtures and again with real compiler output. |
+| Raw RPC parity | 16 server cases and GET/POST client wire checks passed. |
+| Real Skir compiler and serialization interoperability | 209 vectors passed, including dense/readable JSON, canonical binary, recursion, unknown preservation, and long bytes. |
+
+The runtime fixes address forward struct references during compilation, native
+validation of structs, and compiler warnings treated as errors. The RPC Studio
+HTML now matches the upstream shell, including its blank line after the doctype.
+
+Two oracle boundaries are explicit:
+
+- Malformed typed JSON must produce HTTP 400 with the same content type and RPC
+  error prefix; V8 and Jason keep their own syntax-error diagnostics.
+- `skir-client` 1.0.19 corrupts binary encoding when a bytes payload crosses its
+  initial 128-byte output buffer. The 257-byte case uses the documented wire
+  format, checks the upstream decoder and JSON serializers, and requires exact
+  Elixir encoding. Upstream binary re-encoding is excluded only for this case.
+  A 117-byte case still checks both binary encoders.
+
+The TypeScript reflection-number anomaly remains documented in
+[docs/SKIRRPC_PARITY.md](docs/SKIRRPC_PARITY.md). A live Dart/Phoenix deployment
+check and independent security/fuzz review remain outside this test gate.
+
+---
+
+# Historical authoring report — 2026-10-03
 
 ## Scope in 0.3.0
 

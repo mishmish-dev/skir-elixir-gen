@@ -1,6 +1,12 @@
 defmodule Skir.ValidationTest do
   use ExUnit.Case, async: true
 
+  test "invalid struct values return structured errors and honor byte limits" do
+    value = %Skir.Unknown{format: :dense, value: "payload"}
+    assert {:error, %Skir.Error{reason: :invalid_type}} = Skir.to_json(:int32, value)
+    assert {:error, %Skir.Error{reason: :byte_limit}} = Skir.to_json(:int32, value, max_bytes: 2)
+  end
+
   test "improper lists return structured errors, not ArgumentError" do
     assert {:error, %Skir.Error{}} = Skir.to_json({:array, :int32}, [1 | 2])
     assert {:error, %Skir.Error{}} = Skir.from_json({:array, :int32}, [1 | 2])

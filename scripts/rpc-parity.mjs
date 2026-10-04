@@ -78,6 +78,14 @@ function normalizedResponse(testCase, raw) {
     data: raw.data,
   };
 
+  if (testCase.name === 'known method malformed request JSON') {
+    // V8 and Jason report syntax errors differently. Require the same status
+    // and RPC error prefix while allowing the parser-specific diagnostic.
+    assert.equal(response.status_code, 400);
+    assert.match(response.data, /^bad request: can't parse JSON: .+$/);
+    response.data = "bad request: can't parse JSON: <parser diagnostic>";
+  }
+
   if (testCase.body === 'list' && response.status_code === 200) {
     const parsed = JSON.parse(response.data);
     for (const method of parsed.methods ?? []) {

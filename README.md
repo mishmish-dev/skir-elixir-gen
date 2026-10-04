@@ -4,12 +4,11 @@ An **unofficial, initial implementation**, maintained in this standalone reposit
 Elixir structs and tagged enum values. Neither the generated code nor its runtime
 uses Gleam, a port, a NIF, or a JavaScript process for serialization.
 
-**Verification status:** the dependency-free generator core has been executed and
-its tests pass. The Elixir runtime, plugin loading through the real Skir compiler,
-and cross-language integration have **not** been executed in the authoring
-sandbox: Elixir/Erlang are absent and package downloads are unavailable. This is
-not a production-readiness claim. See [VERIFICATION.md](VERIFICATION.md) for the
-actual commands, results, and remaining release gates.
+**Verification status:** `npm run test:all` passes on Elixir 1.20.4 / OTP 29:
+45 Node tests, 59 runtime tests, 24 generated-code tests, 16 RPC server parity
+cases plus GET/POST client checks, and 209 serialization interoperability vectors.
+CI runs the same gate on OTP 27.3.4.18, 28.5.0.7, and 29.1.1. See
+[VERIFICATION.md](VERIFICATION.md) for results and interoperability limitations.
 
 ## Repository
 
@@ -25,9 +24,9 @@ npm run check
 npm test
 ```
 
-The reports under `reports/` and [VERIFICATION.md](VERIFICATION.md) record the
-original implementation's verification results. They do not establish that the
-Elixir runtime or cross-language tests have passed in this repository.
+The reports under `reports/` preserve the original implementation's verification
+results. [VERIFICATION.md](VERIFICATION.md) starts with the current full-gate
+results and retains the original report as historical context.
 
 ## Layout
 
@@ -41,14 +40,14 @@ runtime/test/              ExUnit codec + SkirRPC + Plug tests
 example/test/              generated types, evolution, and RPC round-trip tests
 scripts/integration.mjs    real compiler + upstream TypeScript serialization interoperability
 scripts/rpc-parity.mjs   official TypeScript ↔ native Elixir SkirRPC oracle
-.github/workflows/ci.yml   CI definition; not executed in the authoring sandbox
+.github/workflows/ci.yml   full test gate on OTP 27, 28, and 29
 ```
 
 The plugin targets the interfaces declared by `skir@1.2.22` and
 `skir-internal@0.2.21`. Reference dependencies are pinned to `skir-client@1.0.19`
-and `skir-typescript-gen@1.0.11`. These versions were read from upstream source
-manifests; registry installation was not verified here. Runtime target: Elixir
-1.14+ with a compatible Erlang/OTP release. Node target: 20+.
+and `skir-typescript-gen@1.0.11`. These dependencies have been installed and
+exercised by the integration gates. Runtime target: Elixir 1.14+ with a compatible
+Erlang/OTP release. Node target: 20+.
 
 ## Run the example
 
@@ -329,8 +328,7 @@ Studio, and reflection are included. The SkirRPC surface has been source-audited
 against the official TypeScript, Dart, and Gleam runtimes; where TypeScript and
 Dart agree, 0.3.0 treats that behavior as the compatibility baseline. The
 executable TypeScript ↔ Elixir raw-response oracle is included as
-`npm run test:rpc-parity` but could not run in this sandbox because Elixir/Mix and
-installed npm dependencies are unavailable.
+`npm run test:rpc-parity` and passes on Elixir 1.20.4 / OTP 29.
 
 Not included: streaming RPC (not part of the current SkirRPC wire protocol), OTP
 release benchmarking, a live Dart ↔ Phoenix interoperability run, or independent
@@ -340,9 +338,9 @@ behavior used by Dart and Gleam instead. See `docs/SKIRRPC_PARITY.md`.
 
 Before adopting it in production, run the complete test gate on the intended
 Elixir/OTP versions, add your schemas and Dart-produced vectors, review the native
-codec implementation, and fuzz malformed inputs. After dependencies can be
-resolved, commit `package-lock.json` and the Mix lockfiles. The authoring sandbox
-could not produce dependency locks or execute the CI definition. Neither the npm generator nor the Elixir runtime has been published.
+codec implementation, and fuzz malformed inputs. Commit `package-lock.json` and
+the Mix lockfiles before releasing a reproducible production baseline. Neither the npm generator nor the Elixir runtime has been
+published.
 
 ## Upstream references used
 

@@ -16,7 +16,8 @@ defmodule Skir.RPC.ServiceClient do
         }
 
   @spec new(String.t(), keyword()) :: {:ok, t()} | {:error, String.t()}
-  def new(service_url, opts \\ []) when is_binary(service_url) and is_list(opts) do
+  def new(service_url, opts \\ [])
+  def new(service_url, opts) when is_binary(service_url) and is_list(opts) do
     cond do
       String.contains?(service_url, "?") ->
         {:error, "service URL must not contain a query string"}

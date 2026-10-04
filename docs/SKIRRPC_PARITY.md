@@ -82,18 +82,19 @@ content type, and response body. Cases include:
 - duplicate-name ambiguity and numeric disambiguation.
 
 The `list` response is compared semantically after normalizing the one documented
-TypeScript `number` anomaly; all other cases compare the transport-neutral raw
+TypeScript `number` anomaly. The malformed request JSON case checks the HTTP
+status, content type, and RPC error prefix, allowing V8 and Jason to use their
+own syntax-error diagnostics. All other cases compare the transport-neutral raw
 response directly.
 
 The oracle is intentionally a hard gate: missing Node dependencies, `mix`, or
 Elixir fails the command rather than silently skipping cross-runtime comparison.
 
-## Remaining runtime evidence
+## Runtime verification
 
-The authoring sandbox cannot execute the oracle because it has no Elixir/Erlang
-or Mix installation and cannot fetch missing package/toolchain dependencies.
-Source-level parity tests therefore guard the audited semantics here, while a
-machine with the normal toolchains should run:
+On 2026-10-04 the oracle passed all 16 raw server cases and GET/POST client wire
+checks on Elixir 1.20.4 / OTP 29. CI runs the complete gate on pinned OTP 27, 28,
+and 29 releases. To reproduce with the normal toolchains:
 
 ```sh
 npm install

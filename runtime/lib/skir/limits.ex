@@ -83,7 +83,7 @@ defmodule Skir.Limits do
   end
   defp native_walk(term, ctx, remaining) when is_map(term) do
     collection(map_size(term), ctx)
-    Enum.reduce(term, remaining - 1, fn
+    Enum.reduce(Map.to_list(term), remaining - 1, fn
       {:__struct__, _}, n -> n
       {key, value}, n -> native_walk(value, child(ctx, key), n)
     end)

@@ -46,7 +46,7 @@ defmodule Skir.Binary do
     {n, rest} = read_length(rest, ctx)
     Limits.size(n, ctx)
     if n > byte_size(rest), do: Error.fail(ctx, :truncated)
-    <<value::binary-size(n), tail::binary>> = rest
+    {value, tail} = :erlang.split_binary(rest, n)
     if marker == 0xF3 and not String.valid?(value), do: Error.fail(ctx, :invalid_utf8)
     kind = if marker == 0xF3, do: :string, else: :bytes
     {{kind, value}, tail, remaining}
@@ -141,7 +141,7 @@ defmodule Skir.Binary do
   defp float_bits(_, _, ctx), do: Error.fail(ctx, :invalid_type, "expected float")
 
   defp float_from_bits(bytes, size) do
-    <<bits::little-unsigned-size(size)>> = bytes
+    bits = :binary.decode_unsigned(bytes, :little)
     {exponent, fraction, sign} = if size == 32 do
       {bits &&& 0x7F800000, bits &&& 0x007FFFFF, bits &&& 0x80000000}
     else
@@ -153,8 +153,10 @@ defmodule Skir.Binary do
       exponent == max_exponent and sign != 0 -> :neg_infinity
       exponent == max_exponent -> :infinity
       true ->
-        <<value::little-float-size(size)>> = bytes
-        value
+        case bytes do
+          <<value::little-float-32>> -> value
+          <<value::little-float-64>> -> value
+        end
     end
   end
 end
