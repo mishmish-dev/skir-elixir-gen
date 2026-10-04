@@ -234,6 +234,11 @@ test('invalid compiler IR fails before producing partial output', () => {
       ),
     /Reserved/,
   );
+  for (const slots of ['raise("injected")', -1, 1.5, NaN, Infinity, 1]) {
+    const malicious = record('a.skir', ['E'], 'enum', []);
+    malicious.record.numSlotsInclRemovedNumbers = slots;
+    assert.throws(() => generateCode(input([malicious])), /slot count/);
+  }
   // A DAG can expand exponentially despite having few source records.
   const dag = Array.from({ length: 18 }, (_, n) =>
     record(

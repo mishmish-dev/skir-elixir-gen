@@ -205,11 +205,12 @@ export function generateCode(input) {
       }
       claim(removed, number, 'removed field number');
     }
-    if (r.recordType === 'struct') {
-      const expected = Math.max(-1, ...fieldNumbers, ...removed) + 1;
-      if (r.numSlotsInclRemovedNumbers !== expected)
-        throw new Error(`Invalid slot count for ${r.key}`);
-    }
+    const expectedSlots =
+      r.recordType === 'struct'
+        ? Math.max(-1, ...fieldNumbers, ...removed) + 1
+        : 0;
+    if (r.numSlotsInclRemovedNumbers !== expectedSlots)
+      throw new Error(`Invalid slot count for ${r.key}`);
   }
   for (const loc of locations.values()) validateRecord(loc);
 
