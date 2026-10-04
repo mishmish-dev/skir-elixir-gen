@@ -7,10 +7,40 @@ and Elixir 1.20.4 on pinned OTP 27.3.4.18, 28.5.0.7, and 29.1.1 releases.
 | Check | Observed result |
 |---|---|
 | Generator syntax and Node tests | 45 passed, no failures or skips. |
-| Runtime ExUnit/Plug tests | 59 passed. |
-| Generated-code ExUnit tests | 24 passed with fixtures and again with real compiler output. |
+| Runtime ExUnit/Plug tests | 60 passed. |
+| Generated-code ExUnit tests | 140 passed with real compiler output, including all 101 upstream golden cases. |
 | Raw RPC parity | 16 server cases and GET/POST client wire checks passed. |
 | Real Skir compiler and serialization interoperability | 209 vectors passed, including dense/readable JSON, canonical binary, recursion, unknown preservation, and long bytes. |
+
+The expanded suite vendors the unmodified shared golden schema from upstream
+v1.0.6 (commit `ccd9ded8efcc4c6d76e8bb4b7f6ebcf23979fb4a`), preserving its MIT
+license and provenance. All 101 cases run, including infinities and large arrays;
+JSON comparisons use decoded terms, while binary comparisons use exact bytes.
+The only reflection normalization removes the upstream repository prefix because
+the schema is vendored locally. In cases 1067–1070, Elixir requires explicit
+`:discard` when converting preserved unknown data to another format; tests first
+assert `:unknown_format`, then verify the upstream result with that option.
+
+These cases exposed two compatibility bugs: generated reflection IDs included
+compiler source offsets, and numeric readers rejected valid quoted integer and
+floating-point representations. IDs now use the module path and qualified record
+name. Numeric readers accept the golden representations while retaining range,
+complete-string parsing, and non-finite integer rejection checks. Native integer
+encoders still require integers.
+
+The example suite comprises 24 existing tests, 102 golden tests (101 cases plus
+corpus completeness), seven generated API tests, three live HTTP RPC tests, and
+four fresh-process initialization tests. Real schemas cover nested/repeated names,
+constructors, immutable updates, defaults, keyed-array indexes and duplicates,
+constants, and recursive enum/struct graphs. The live HTTP tests use a test-only
+Cowboy listener on an OS-assigned localhost port and OTP's `:httpc` client for
+GET/POST, metadata, errors, and reflection. Fresh BEAM processes touch recursive
+modules in different orders and concurrently.
+
+Cowboy is confined to the example's test environment. Hex currently reports two
+[cowlib advisories](https://hex.pm/packages/cowlib/advisories) even for the latest
+2.20.0 release resolved here; the test server listens only on localhost and is
+stopped after each test. This does not add Cowboy to the production runtime.
 
 The runtime fixes address forward struct references during compilation, native
 validation of structs, and compiler warnings treated as errors. The RPC Studio

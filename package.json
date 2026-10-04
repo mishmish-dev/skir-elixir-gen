@@ -25,7 +25,7 @@
   "scripts": {
     "test": "node --test test/*.test.mjs",
     "generate:fixtures": "node scripts/generate-fixtures.mjs",
-    "test:elixir": "npm run generate:fixtures && cd example && mix deps.get && mix test",
+    "test:elixir": "npm run generate && cd example && mix deps.get && mix test",
     "test:integration": "node scripts/integration.mjs",
     "check": "node --check src/generator.js && node --check src/naming.js && node --check src/index.js",
     "configure": "node scripts/configure-example.mjs",

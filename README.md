@@ -5,7 +5,7 @@ Elixir structs and tagged enum values. Neither the generated code nor its runtim
 uses Gleam, a port, a NIF, or a JavaScript process for serialization.
 
 **Verification status:** `npm run test:all` passes on Elixir 1.20.4 / OTP 29:
-45 Node tests, 59 runtime tests, 24 generated-code tests, 16 RPC server parity
+45 Node tests, 60 runtime tests, 140 generated-code tests, 16 RPC server parity
 cases plus GET/POST client checks, and 209 serialization interoperability vectors.
 CI runs the same gate on OTP 27.3.4.18, 28.5.0.7, and 29.1.1. See
 [VERIFICATION.md](VERIFICATION.md) for results and interoperability limitations.
@@ -37,7 +37,8 @@ example/skir-src/           real Skir example schemas
 example/lib/skirout/        sample generated Elixir (from resolved-IR fixtures)
 test/                      Node generator-core tests
 runtime/test/              ExUnit codec + SkirRPC + Plug tests
-example/test/              generated types, evolution, and RPC round-trip tests
+example/test/              upstream goldens, generated API, live HTTP, cold-start tests
+fixtures/upstream/         pinned golden corpus provenance and license
 scripts/integration.mjs    real compiler + upstream TypeScript serialization interoperability
 scripts/rpc-parity.mjs   official TypeScript ↔ native Elixir SkirRPC oracle
 .github/workflows/ci.yml   full test gate on OTP 27, 28, and 29
@@ -293,7 +294,7 @@ npm test
 npm run check
 npm run generate:fixtures
 
-# Requires Elixir and access to Hex for Jason.
+# Requires Elixir and access to Hex for runtime and test-only HTTP dependencies.
 npm run test:runtime
 npm run test:elixir
 
@@ -309,12 +310,27 @@ npm run test:all
 ```
 
 `generate:fixtures` intentionally uses a hand-built resolved-IR fixture, not a
-Skir parser. The integration command overwrites those example outputs by invoking
-the real compiler, compiles the native modules with warnings-as-errors, runs the
+Skir parser. Both `test:elixir` and the integration command regenerate example outputs using
+the real compiler. Integration compiles the native modules with warnings-as-errors, runs the
 example tests, and exchanges JSON and byte-for-byte binary vectors with the
 upstream TypeScript runtime. It includes deterministic generated cases and
 unknown-data preservation. A missing tool is a failure, never a skipped success.
 It writes `.artifacts/reference-vectors.json` and `.artifacts/elixir-vectors.json`.
+
+The example suite runs all 101 cases from the unmodified upstream golden corpus
+[v1.0.6](https://github.com/gepheum/skir-golden-tests/tree/v1.0.6), including
+infinities and large collections. JSON expectations compare decoded terms; binary
+expectations remain byte-for-byte. Four cross-format unknown-field cases also
+check Elixir's `:unknown_format` error before explicitly discarding the retained
+fields. Only the repository prefix in reflection IDs is translated for the
+vendored schema. See [fixture provenance](fixtures/upstream/skir-golden-tests/README.md).
+
+Additional real schemas test constructors, updates, defaults, nested names,
+keyed arrays, constants, and recursive types. A test-only Cowboy server on an
+OS-assigned localhost port exercises generated GET/POST clients through OTP
+`:httpc`, errors, metadata, and reflection. Four fresh BEAM processes test
+recursive defaults, codecs, reflection, and concurrent initialization. These
+checks run through `test:elixir`, `test:all`, and every CI matrix entry.
 
 ## Current boundaries / release gate
 

@@ -1,0 +1,60 @@
+import { User } from "user.skir";
+
+enum Status {
+  offline;
+  online: string;
+}
+
+struct Entry {
+  user: User;
+  status: Status;
+}
+
+struct Directory {
+  by_user: [Entry|user.id];
+  by_status: [Entry|status.kind];
+}
+
+struct Container {
+  struct Item {
+    struct Item {
+      value: string;
+    }
+    item: Item;
+  }
+  item: Item;
+}
+
+struct RecA {
+  b: RecB;
+  name: string;
+}
+
+struct RecB {
+  a: RecA;
+  links: [RecA?]?;
+}
+
+enum Value {
+  text: string;
+  array: [Value];
+  object: [Field|name];
+}
+
+struct Field {
+  name: string;
+  value: Value;
+}
+
+const ENABLED: bool = true;
+const MAX_ID: int64 = 9223372036854775807;
+const MAX_HASH: hash64 = 18446744073709551615;
+const PI: float64 = 3.141592653589793;
+const START: timestamp = "2023-12-31T00:53:48+00:00";
+const RAW_BYTES: bytes = "hex:0001ff";
+const NAN: float64 = "NaN";
+const INFINITY: float32 = "Infinity";
+const GREETING: Value = {
+  kind: "object",
+  value: [{ name: "hello", value: { kind: "text", value: "world" } }],
+};

@@ -153,7 +153,8 @@ export function generateCode(input) {
       lines.push(`  @type t :: ${[':unknown', '{:unknown, Skir.Unknown.t()}', ...variants].join(' | ')}`);
       lines.push('  @spec default() :: t()', '  def default(), do: :unknown');
     }
-    lines.push('  @doc false', '  def schema() do', `    %{kind: :${r.recordType}, module: __MODULE__, key: ${string(r.key)}, doc: ${string(r.doc?.text || '')},`);
+    const reflectionId = `${loc.modulePath}:${loc.recordAncestors.map(r => r.name.text).join('.')}`;
+    lines.push('  @doc false', '  def schema() do', `    %{kind: :${r.recordType}, module: __MODULE__, key: ${string(reflectionId)}, doc: ${string(r.doc?.text || '')},`);
     lines.push(`      slots: ${r.numSlotsInclRemovedNumbers}, removed: ${literal([...r.removedNumbers].sort((a,b) => a-b))},`);
     const entries = fields.map(f => {
       const path = f.type?.kind === 'array' && f.type.key ? f.type.key.path.map(p => atom(identifier(p.name.text))).join(', ') : '';

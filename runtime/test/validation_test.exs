@@ -27,4 +27,15 @@ defmodule Skir.ValidationTest do
       assert {:error, %Skir.Error{reason: :invalid_options}} = Skir.encode(:int32, 1, opts)
     end
   end
+
+  test "numeric reader compatibility retains strict ranges and complete string parsing" do
+    assert {:error, %Skir.Error{reason: :integer_range}} = Skir.from_json(:int32, "2147483648")
+    assert {:error, %Skir.Error{reason: :integer_range}} = Skir.from_json(:timestamp, "8640000000000001")
+    assert {:error, %Skir.Error{reason: :integer_range}} = Skir.from_json(:hash64, -1.5)
+    for value <- ["2x", " 2", "02", "1.5", String.duplicate("9", 100)] do
+      assert {:error, %Skir.Error{}} = Skir.from_json(:int32, value)
+    end
+    assert {:error, %Skir.Error{reason: :invalid_type}} = Skir.to_json(:int32, 2.0)
+    assert {:error, %Skir.Error{reason: :invalid_type}} = Skir.decode(:int32, <<"skir", 0xf0, 0, 0, 0xc0, 0x7f>>)
+  end
 end
