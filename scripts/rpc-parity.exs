@@ -30,7 +30,9 @@ conflict_method = %Skir.Method{
 single =
   Service.new()
   |> Service.add_method(string_method, fn request, _metadata -> {:ok, request} end)
-  |> Service.add_method(conflict_method, fn _request, _metadata -> {:error, Skir.RPC.error(409)} end)
+  |> Service.add_method(conflict_method, fn _request, _metadata ->
+    {:error, Skir.RPC.error(409)}
+  end)
 
 ambiguous =
   Service.new()
@@ -55,7 +57,15 @@ results =
   end)
 
 parent = self()
-client_method = %Skir.Method{name: "Echo", number: 12_345, doc: "", request: :string, response: :string}
+
+client_method = %Skir.Method{
+  name: "Echo",
+  number: 12_345,
+  doc: "",
+  request: :string,
+  response: :string
+}
+
 client_request = "a b%?&#$=+/@'"
 
 capture_client = fn http_method ->
@@ -65,7 +75,9 @@ capture_client = fn http_method ->
   end
 
   client = Skir.RPC.ServiceClient.new!("https://example.test/rpc", transport: transport)
-  {:ok, "ok"} = Skir.RPC.ServiceClient.invoke(client, client_method, client_request, http_method: http_method)
+
+  {:ok, "ok"} =
+    Skir.RPC.ServiceClient.invoke(client, client_method, client_request, http_method: http_method)
 
   receive do
     {:client_wire, method, url, body} ->

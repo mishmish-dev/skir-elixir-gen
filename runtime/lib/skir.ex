@@ -13,8 +13,14 @@ defmodule Skir do
   """
   alias Skir.{Binary, Codec, Error, Limits}
 
-  @type primitive :: :bool | :int32 | :int64 | :hash64 | :float32 | :float64 | :timestamp | :string | :bytes
-  @type type :: primitive() | {:optional, type()} | {:array, type()} | {:array, type(), String.t()} | {:record, module()}
+  @type primitive ::
+          :bool | :int32 | :int64 | :hash64 | :float32 | :float64 | :timestamp | :string | :bytes
+  @type type ::
+          primitive()
+          | {:optional, type()}
+          | {:array, type()}
+          | {:array, type(), String.t()}
+          | {:record, module()}
   @type float_value :: float() | integer() | :nan | :infinity | :neg_infinity
   @type result(value) :: {:ok, value} | {:error, Error.t()}
 
@@ -47,6 +53,7 @@ defmodule Skir do
       Limits.native_term(value, ctx)
       {term, _} = Codec.encode(type, value, ctx)
       Limits.json_term(term, ctx)
+
       case Jason.encode(term) do
         {:ok, code} -> Limits.bytes(code, ctx)
         {:error, _} -> Error.fail(ctx, :invalid_json)
@@ -76,6 +83,7 @@ defmodule Skir do
     capture(fn ->
       ctx = Limits.context(opts, :binary)
       Limits.bytes(bytes, ctx)
+
       case bytes do
         <<"skir", body::binary>> -> Codec.decode(type, Binary.decode_value(body, ctx), ctx)
         _ -> json_decode(type, bytes, %{ctx | format: :dense})
@@ -98,14 +106,16 @@ defmodule Skir do
   @spec index_by(list(), [atom()]) :: map()
   def index_by(values, path) when is_list(values) and is_list(path) do
     Enum.reduce(values, %{}, fn value, acc ->
-      key = Enum.reduce(path, value, fn field, item ->
-        case {field, item} do
-          {:kind, {tag, _}} when is_atom(tag) -> tag
-          {:kind, tag} when is_atom(tag) -> tag
-          {field, map} when is_map(map) -> Map.fetch!(map, field)
-          _ -> raise ArgumentError, "invalid keyed-array path"
-        end
-      end)
+      key =
+        Enum.reduce(path, value, fn field, item ->
+          case {field, item} do
+            {:kind, {tag, _}} when is_atom(tag) -> tag
+            {:kind, tag} when is_atom(tag) -> tag
+            {field, map} when is_map(map) -> Map.fetch!(map, field)
+            _ -> raise ArgumentError, "invalid keyed-array path"
+          end
+        end)
+
       if Map.has_key?(acc, key), do: raise(ArgumentError, "duplicate keyed-array key")
       Map.put(acc, key, value)
     end)
@@ -113,13 +123,17 @@ defmodule Skir do
 
   defp json_decode(type, code, ctx) do
     Limits.json_code(code, ctx)
+
     case Jason.decode(code) do
       {:ok, term} ->
         Limits.json_term(term, ctx)
         Codec.decode(type, term, ctx)
-      {:error, _} -> Error.fail(ctx, :invalid_json)
+
+      {:error, _} ->
+        Error.fail(ctx, :invalid_json)
     end
   end
+
   defp capture(fun) do
     {:ok, fun.()}
   rescue

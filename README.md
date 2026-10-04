@@ -7,8 +7,8 @@ uses Gleam, a port, a NIF, or a JavaScript process for serialization.
 **Verification status:** `npm run test:all` passes on Elixir 1.20.4 / OTP 29:
 four table-driven Node tests, 171 native Elixir tests (runtime and generated APIs),
 16 RPC server parity cases plus GET/POST client checks, and 209 serialization
-interoperability vectors. Measured line coverage is 99.15% for the generator core, 100% for the plugin
-and naming helpers, and 98.89% for handwritten Elixir. Coverage is reported
+interoperability vectors. Measured line coverage is 99.49% for the generator core, 100% for the plugin
+and naming helpers, and 98.96% for handwritten Elixir. Coverage is reported
 with a 90% minimum enforced for Elixir.
 CI runs the same gate on OTP 27.3.4.18, 28.5.0.7, and 29.1.1. See
 [VERIFICATION.md](VERIFICATION.md) for results and interoperability limitations.
@@ -17,12 +17,14 @@ CI runs the same gate on OTP 27.3.4.18, 28.5.0.7, and 29.1.1. See
 
 This repository starts from the existing `skir-elixir-0.3.0` implementation.
 It contains the npm generator and its companion Elixir runtime; both remain
-unpublished packages. The repository is private initially.
+unpublished packages. The repository is private initially. CI validates both distribution archives;
+[release instructions](docs/RELEASING.md) describe npm and Hex publishing and
+the required GitHub secrets.
 
 ```sh
 git clone https://github.com/mishmish-dev/skir-elixir-gen.git
 cd skir-elixir-gen
-npm install
+npm ci --ignore-scripts
 npm run check
 npm test
 ```
@@ -58,7 +60,7 @@ Erlang/OTP release. Node target: 20+.
 From the unpacked project root, on a machine with Node, Elixir and Mix:
 
 ```sh
-npm install
+npm ci --ignore-scripts
 mix local.hex --force
 mix local.rebar --force
 

@@ -10,7 +10,9 @@ defmodule Example.RPCTest do
 
     transport = fn :post, _url, _headers, body, _opts ->
       raw = Service.handle_request(service, body, %{source: :test})
-      {:ok, %{status: raw.status_code, headers: [{"content-type", raw.content_type}], body: raw.data}}
+
+      {:ok,
+       %{status: raw.status_code, headers: [{"content-type", raw.content_type}], body: raw.data}}
     end
 
     client = ServiceClient.new!("http://example.invalid/rpc", transport: transport)

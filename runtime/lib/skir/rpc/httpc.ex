@@ -3,7 +3,8 @@ defmodule Skir.RPC.HTTPClient.Httpc do
   @behaviour Skir.RPC.HTTPClient
 
   @spec request(:get | :post, String.t(), [{String.t(), String.t()}], binary(), keyword()) ::
-          {:ok, %{status: integer(), headers: [{String.t(), String.t()}], body: binary()}} | {:error, term()}
+          {:ok, %{status: integer(), headers: [{String.t(), String.t()}], body: binary()}}
+          | {:error, term()}
   def request(method, url, headers, body, opts) when method in [:get, :post] do
     with :ok <- ensure_started(:inets),
          :ok <- ensure_started(:ssl) do
@@ -11,22 +12,35 @@ defmodule Skir.RPC.HTTPClient.Httpc do
       connect_timeout = Keyword.get(opts, :connect_timeout, min(timeout, 10_000))
 
       http_options = [timeout: timeout, connect_timeout: connect_timeout]
-      http_options = if String.starts_with?(url, "https://"), do: Keyword.put(http_options, :ssl, ssl_options()), else: http_options
+
+      http_options =
+        if String.starts_with?(url, "https://"),
+          do: Keyword.put(http_options, :ssl, ssl_options()),
+          else: http_options
 
       request_headers =
         headers
-        |> Enum.reject(fn {key, _} -> method == :post and String.downcase(key) == "content-type" end)
+        |> Enum.reject(fn {key, _} ->
+          method == :post and String.downcase(key) == "content-type"
+        end)
         |> Enum.map(fn {key, value} -> {String.to_charlist(key), String.to_charlist(value)} end)
 
       # WHATWG query strings allow JSON punctuation that OTP's RFC URI parser
       # rejects. Escape only the query, preserving percent escapes and IPv6 hosts.
       uri = URI.parse(url)
-      url = if uri.query do
-        query = URI.encode(uri.query, &(URI.char_unreserved?(&1) or Enum.member?(~c"!$&'()*+,;=:@/?%", &1)))
-        URI.to_string(Map.put(uri, :query, query))
-      else
-        url
-      end
+
+      url =
+        if uri.query do
+          query =
+            URI.encode(
+              uri.query,
+              &(URI.char_unreserved?(&1) or Enum.member?(~c"!$&'()*+,;=:@/?%", &1))
+            )
+
+          URI.to_string(Map.put(uri, :query, query))
+        else
+          url
+        end
 
       request =
         case method do
@@ -36,9 +50,15 @@ defmodule Skir.RPC.HTTPClient.Httpc do
 
       case :httpc.request(method, request, http_options, body_format: :binary) do
         {:ok, {{_version, status, _reason}, response_headers, response_body}} ->
-          {:ok, %{status: status, headers: Enum.map(response_headers, &normalize_header/1), body: IO.iodata_to_binary(response_body)}}
+          {:ok,
+           %{
+             status: status,
+             headers: Enum.map(response_headers, &normalize_header/1),
+             body: IO.iodata_to_binary(response_body)
+           }}
 
-        {:error, reason} -> {:error, reason}
+        {:error, reason} ->
+          {:error, reason}
       end
     end
   rescue

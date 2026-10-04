@@ -18,7 +18,8 @@ defmodule Skir.RPC.Service do
             max_request_bytes: @default_max_request_bytes,
             by_number: %{}
 
-  @type handler :: (term(), term() -> {:ok, term()} | {:error, ServiceError.t() | UnknownError.t()})
+  @type handler :: (term(), term() ->
+                      {:ok, term()} | {:error, ServiceError.t() | UnknownError.t()})
   @type t :: %__MODULE__{}
 
   @spec new(keyword()) :: t()
@@ -29,17 +30,29 @@ defmodule Skir.RPC.Service do
     }
 
     Enum.reduce(opts, service, fn
-      {:keep_unrecognized_values, value}, acc -> set_keep_unrecognized_values(acc, value)
-      {:can_send_unknown_error_message, value}, acc -> set_can_send_unknown_error_message(acc, value)
-      {:error_logger, value}, acc -> set_error_logger(acc, value)
-      {:studio_app_js_url, value}, acc -> set_studio_app_js_url(acc, value)
-      {:max_request_bytes, value}, acc -> set_max_request_bytes(acc, value)
-      {key, _value}, _acc -> raise ArgumentError, "unknown SkirRPC service option: #{inspect(key)}"
+      {:keep_unrecognized_values, value}, acc ->
+        set_keep_unrecognized_values(acc, value)
+
+      {:can_send_unknown_error_message, value}, acc ->
+        set_can_send_unknown_error_message(acc, value)
+
+      {:error_logger, value}, acc ->
+        set_error_logger(acc, value)
+
+      {:studio_app_js_url, value}, acc ->
+        set_studio_app_js_url(acc, value)
+
+      {:max_request_bytes, value}, acc ->
+        set_max_request_bytes(acc, value)
+
+      {key, _value}, _acc ->
+        raise ArgumentError, "unknown SkirRPC service option: #{inspect(key)}"
     end)
   end
 
   @spec add_method(t(), Skir.Method.t(), handler()) :: t()
-  def add_method(%__MODULE__{} = service, %Skir.Method{} = method, handler) when is_function(handler, 2) do
+  def add_method(%__MODULE__{} = service, %Skir.Method{} = method, handler)
+      when is_function(handler, 2) do
     validate_method!(method)
 
     if Map.has_key?(service.by_number, method.number) do
@@ -75,6 +88,7 @@ defmodule Skir.RPC.Service do
 
   @spec handle_request(t(), binary(), term()) :: RawResponse.t()
   def handle_request(service, body, request_metadata \\ nil)
+
   def handle_request(%__MODULE__{} = service, body, request_metadata) when is_binary(body) do
     cond do
       byte_size(body) > service.max_request_bytes ->
@@ -137,7 +151,9 @@ defmodule Skir.RPC.Service do
 
   defp parse_json_method(value) when is_binary(value), do: {:ok, {value, nil}}
   defp parse_json_method(value) when is_integer(value), do: {:ok, {"?", value}}
-  defp parse_json_method(_), do: {:error, text(400, "bad request: 'method' field must be a string or an integer")}
+
+  defp parse_json_method(_),
+    do: {:error, text(400, "bad request: 'method' field must be a string or an integer")}
 
   defp handle_colon_request(service, body, metadata) do
     case String.split(body, ":", parts: 4) do
@@ -156,6 +172,7 @@ defmodule Skir.RPC.Service do
   end
 
   defp parse_method_number(""), do: {:ok, nil}
+
   defp parse_method_number(value) do
     if Regex.match?(~r/^-?[0-9]+$/, value) do
       {:ok, String.to_integer(value)}
@@ -171,9 +188,15 @@ defmodule Skir.RPC.Service do
       |> Enum.filter(fn %{method: method} -> method.name == name end)
 
     case matches do
-      [] -> {:error, text(400, "bad request: method not found: #{name}")}
-      [entry] -> {:ok, entry}
-      _ -> {:error, text(400, "bad request: method name '#{name}' is ambiguous; use method number instead")}
+      [] ->
+        {:error, text(400, "bad request: method not found: #{name}")}
+
+      [entry] ->
+        {:ok, entry}
+
+      _ ->
+        {:error,
+         text(400, "bad request: method name '#{name}' is ambiguous; use method number instead")}
     end
   end
 
@@ -192,8 +215,11 @@ defmodule Skir.RPC.Service do
            unknown_fields: unknown_fields,
            max_bytes: service.max_request_bytes
          ) do
-      {:ok, request} -> {:ok, request}
-      {:error, error} -> {:error, text(400, "bad request: can't parse JSON: " <> Exception.message(error))}
+      {:ok, request} ->
+        {:ok, request}
+
+      {:error, error} ->
+        {:error, text(400, "bad request: can't parse JSON: " <> Exception.message(error))}
     end
   end
 
@@ -231,40 +257,89 @@ defmodule Skir.RPC.Service do
   defp invoke_handler(service, %{method: method, handler: handler}, request, mode, metadata) do
     try do
       case handler.(request, metadata) do
-        {:ok, response} -> encode_success(method, response, mode)
-        {:error, %ServiceError{} = error} -> controlled_error(service, method, error, metadata)
-        {:error, %UnknownError{} = error} -> unknown_error(service, method, error.message, metadata, error, nil)
-        other -> unknown_error(service, method, "invalid handler return: #{inspect(other)}", metadata, other, nil)
+        {:ok, response} ->
+          encode_success(method, response, mode)
+
+        {:error, %ServiceError{} = error} ->
+          controlled_error(service, method, error, metadata)
+
+        {:error, %UnknownError{} = error} ->
+          unknown_error(service, method, error.message, metadata, error, nil)
+
+        other ->
+          unknown_error(
+            service,
+            method,
+            "invalid handler return: #{inspect(other)}",
+            metadata,
+            other,
+            nil
+          )
       end
     rescue
-      error in ServiceError -> controlled_error(service, method, error, metadata)
-      error -> unknown_error(service, method, Exception.message(error), metadata, error, __STACKTRACE__)
+      error in ServiceError ->
+        controlled_error(service, method, error, metadata)
+
+      error ->
+        unknown_error(service, method, Exception.message(error), metadata, error, __STACKTRACE__)
     catch
-      kind, value -> unknown_error(service, method, "#{kind}: #{inspect(value)}", metadata, {kind, value}, __STACKTRACE__)
+      kind, value ->
+        unknown_error(
+          service,
+          method,
+          "#{kind}: #{inspect(value)}",
+          metadata,
+          {kind, value},
+          __STACKTRACE__
+        )
     end
   end
 
   defp encode_success(method, response, mode) do
     case Skir.encode_json(method.response, response, format: mode) do
-      {:ok, json} -> %RawResponse{status_code: 200, content_type: "application/json", data: json}
-      {:error, error} -> text(500, "server error: can't serialize response to JSON: " <> Exception.message(error))
+      {:ok, json} ->
+        %RawResponse{status_code: 200, content_type: "application/json", data: json}
+
+      {:error, error} ->
+        text(500, "server error: can't serialize response to JSON: " <> Exception.message(error))
     end
   end
 
   defp controlled_error(service, method, %ServiceError{} = error, metadata) do
     if Skir.RPC.http_error_code?(error.status_code) do
-      info = %ErrorInfo{kind: :controlled, message: error.message, method_name: method.name,
-                        request_metadata: metadata, error: error, stacktrace: nil}
+      info = %ErrorInfo{
+        kind: :controlled,
+        message: error.message,
+        method_name: method.name,
+        request_metadata: metadata,
+        error: error,
+        stacktrace: nil
+      }
+
       safe_log(service, info)
       text(error.status_code, error.message)
     else
-      unknown_error(service, method, "invalid service error status: #{inspect(error.status_code)}", metadata, error, nil)
+      unknown_error(
+        service,
+        method,
+        "invalid service error status: #{inspect(error.status_code)}",
+        metadata,
+        error,
+        nil
+      )
     end
   end
 
   defp unknown_error(service, method, message, metadata, error, stacktrace) do
-    info = %ErrorInfo{kind: :unknown, message: message, method_name: method.name,
-                      request_metadata: metadata, error: error, stacktrace: stacktrace}
+    info = %ErrorInfo{
+      kind: :unknown,
+      message: message,
+      method_name: method.name,
+      request_metadata: metadata,
+      error: error,
+      stacktrace: stacktrace
+    }
+
     safe_log(service, info)
 
     exposed =
@@ -310,41 +385,54 @@ defmodule Skir.RPC.Service do
         |> maybe_put_doc(method.doc || "")
       end)
 
-    %RawResponse{status_code: 200, content_type: "application/json", data: Jason.encode!(%{"methods" => methods}, pretty: true)}
+    %RawResponse{
+      status_code: 200,
+      content_type: "application/json",
+      data: Jason.encode!(%{"methods" => methods}, pretty: true)
+    }
   end
 
   defp serve_studio(service) do
     url = html_escape(service.studio_app_js_url)
 
-    html = """
-    <!DOCTYPE html>
+    html =
+      """
+      <!DOCTYPE html>
 
-    <html>
-      <head>
-        <meta charset="utf-8" />
-        <title>RPC Studio</title>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐙</text></svg>">
-        <script src="#{url}"></script>
-      </head>
-      <body style="margin: 0; padding: 0;">
-        <skir-studio-app></skir-studio-app>
-      </body>
-    </html>
-    """
-    |> String.trim_leading()
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>RPC Studio</title>
+          <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐙</text></svg>">
+          <script src="#{url}"></script>
+        </head>
+        <body style="margin: 0; padding: 0;">
+          <skir-studio-app></skir-studio-app>
+        </body>
+      </html>
+      """
+      |> String.trim_leading()
 
     %RawResponse{status_code: 200, content_type: "text/html; charset=utf-8", data: html}
   end
 
   defp text(status, message),
-    do: %RawResponse{status_code: status, content_type: "text/plain; charset=utf-8", data: message}
+    do: %RawResponse{
+      status_code: status,
+      content_type: "text/plain; charset=utf-8",
+      data: message
+    }
 
   defp maybe_put_doc(map, doc) when is_binary(doc) and doc != "", do: Map.put(map, "doc", doc)
   defp maybe_put_doc(map, _), do: map
 
   defp validate_method!(%Skir.Method{name: name, number: number, doc: doc}) do
-    unless is_binary(name) and name != "", do: raise(ArgumentError, "SkirRPC method name must be non-empty")
-    unless is_integer(number) and number >= 0 and number <= 0xFFFFFFFF, do: raise(ArgumentError, "invalid SkirRPC method number")
+    unless is_binary(name) and name != "",
+      do: raise(ArgumentError, "SkirRPC method name must be non-empty")
+
+    unless is_integer(number) and number >= 0 and number <= 0xFFFFFFFF,
+      do: raise(ArgumentError, "invalid SkirRPC method number")
+
     unless is_binary(doc || ""), do: raise(ArgumentError, "SkirRPC method doc must be a string")
     :ok
   end

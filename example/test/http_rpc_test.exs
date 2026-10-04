@@ -27,7 +27,8 @@ defmodule Skir.HTTPRPCTest do
         scheme: :http,
         plug: {Skir.RPC.Plug, [service: service]},
         options: [ref: ref, ip: {127, 0, 0, 1}, port: 0]
-      ) |> Map.put(:id, ref)
+      )
+      |> Map.put(:id, ref)
     )
 
     url = "http://127.0.0.1:#{:ranch.get_port(ref)}/rpc"
@@ -73,21 +74,39 @@ defmodule Skir.HTTPRPCTest do
     ids = Enum.map(method["response"]["records"], & &1["id"])
     assert "user.skir:User.Pet" in ids
   end
+
   test "HTTP preserves escaped GET strings and preserves large POST bodies", %{client: client} do
     for method <- [:post, :get] do
       value = "a b%?&#$=+/@'\"<>[]{}^`|\n🌍"
       assert {:ok, ^value} = ApiSkir.echo(client, value, http_method: method, timeout: 2_000)
     end
+
     value = String.duplicate("a", 1_000_001)
     assert {:ok, ^value} = ApiSkir.echo(client, value, timeout: 5_000)
   end
 
-  test "closed listeners produce controlled client errors for HTTP and HTTPS", %{client: client, url: url, ref: ref} do
+  test "closed listeners produce controlled client errors for HTTP and HTTPS", %{
+    client: client,
+    url: url,
+    ref: ref
+  } do
     stop_supervised!(ref)
-    assert {:error, %RpcError{status_code: 0}} = UserSkir.get_user(client, 1, timeout: 500, connect_timeout: 500)
-    assert {:error, _} = Skir.RPC.HTTPClient.Httpc.request(:get, String.replace(url, "http:", "https:"), [], "", timeout: 500)
-    assert {:error, {:unsupported_method, :put}} = Skir.RPC.HTTPClient.Httpc.request(:put, url, [], "", [])
+
+    assert {:error, %RpcError{status_code: 0}} =
+             UserSkir.get_user(client, 1, timeout: 500, connect_timeout: 500)
+
+    assert {:error, _} =
+             Skir.RPC.HTTPClient.Httpc.request(
+               :get,
+               String.replace(url, "http:", "https:"),
+               [],
+               "",
+               timeout: 500
+             )
+
+    assert {:error, {:unsupported_method, :put}} =
+             Skir.RPC.HTTPClient.Httpc.request(:put, url, [], "", [])
+
     assert {:error, _} = Skir.RPC.HTTPClient.Httpc.request(:get, url, :bad_headers, "", [])
   end
-
 end

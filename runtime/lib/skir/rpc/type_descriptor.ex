@@ -1,20 +1,34 @@
 defmodule Skir.RPC.TypeDescriptor do
   @moduledoc "Builds the self-describing type JSON used by SkirRPC's `list` endpoint and Studio."
 
-  @primitive_types [:bool, :int32, :int64, :hash64, :float32, :float64, :timestamp, :string, :bytes]
+  @primitive_types [
+    :bool,
+    :int32,
+    :int64,
+    :hash64,
+    :float32,
+    :float64,
+    :timestamp,
+    :string,
+    :bytes
+  ]
 
   @spec to_map(Skir.type()) :: map()
   def to_map(type) do
     records = collect(type, %{})
-    root_id = case type do
-      {:record, mod} -> mod.schema().key
-      _ -> nil
-    end
+
+    root_id =
+      case type do
+        {:record, mod} -> mod.schema().key
+        _ -> nil
+      end
 
     sorted_records =
       records
       |> Map.values()
-      |> Enum.sort_by(fn record -> {if(record["id"] == root_id, do: 0, else: 1), record["id"]} end)
+      |> Enum.sort_by(fn record ->
+        {if(record["id"] == root_id, do: 0, else: 1), record["id"]}
+      end)
 
     %{"type" => signature(type), "records" => sorted_records}
   end
@@ -91,7 +105,10 @@ defmodule Skir.RPC.TypeDescriptor do
 
   defp signature({:array, inner, key_extractor}) when is_binary(key_extractor) do
     value = %{"item" => signature(inner)}
-    value = if key_extractor == "", do: value, else: Map.put(value, "key_extractor", key_extractor)
+
+    value =
+      if key_extractor == "", do: value, else: Map.put(value, "key_extractor", key_extractor)
+
     %{"kind" => "array", "value" => value}
   end
 

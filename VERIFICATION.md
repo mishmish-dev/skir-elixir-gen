@@ -6,10 +6,12 @@ and Elixir 1.20.4 on pinned OTP 27.3.4.18, 28.5.0.7, and 29.1.1 releases.
 
 | Check | Observed result |
 |---|---|
+| ESLint, Prettier and Mix formatting | Handwritten code checks passed; generated bindings and upstream schema excluded from formatting. |
+| Packed distributions | Installed npm tarball; generated and compiled a fresh consumer against the actual Hex archive; JSON and binary round-trips passed. npm publication dry-run and Hex build passed without publishing. |
 | Generator syntax and Node tests | Four table-driven tests passed, no failures or skips. |
-| JavaScript coverage (Node/V8) | Generator core: 99.15% lines, 94.94% branches, 100% functions. Plugin and naming helpers: 100% lines/branches/functions. |
+| JavaScript coverage (Node/V8) | Generator core: 99.49% lines, 94.94% branches, 100% functions. Plugin and naming helpers: 100% lines/branches/functions. |
 | Combined native suite | 171 passed: 44 runtime/Plug tests and 127 generated-code/example tests, including all 101 upstream golden cases. |
-| Elixir coverage (Mix) | 98.89% lines across all handwritten runtime modules and `Example.RPC`; minimum 90% enforced. |
+| Elixir coverage (Mix) | 98.96% lines across all handwritten runtime modules and `Example.RPC`; minimum 90% enforced. |
 | Raw RPC parity | 16 server cases and GET/POST client wire checks passed. |
 | Real Skir compiler and serialization interoperability | 209 vectors passed, including dense/readable JSON, canonical binary, recursion, unknown preservation, and long bytes. |
 
@@ -32,11 +34,14 @@ encoders still require integers.
 The suite keeps the upstream corpus and both executable interoperability oracles.
 Table-driven checks replace duplicate successful serialization examples and
 source-text assertions. The native tests run once in the full gate instead of
-running the example suite twice. Maintained test files, including helpers and
+running the example suite twice. Before this CI/formatting update, maintained test files, including helpers and
 the fresh-process probe, decreased from 17 to 14 and from 1,407 to 1,302 lines.
+The added distribution check is a single consumer smoke script; formatters
+expand physical lines without adding serialization cases. Coverage percentages
+changed slightly because formatting changes the counted source lines.
 The former baseline had 45 Node tests and 200 native tests; fewer named tests
 now cover more behavior, with native line coverage increasing from 87.76% to
-98.89% on the same module set.
+98.89% before formatting, on the same module set.
 
 Added checks cover invalid compiler IR, naming collisions, constant escaping,
 all supported keyed-array key types, malformed/truncated wire frames, budgets,
@@ -65,7 +70,11 @@ golden corpus, and native API checks. Fresh BEAM subprocesses do not contribute
 to parent-process coverage. Elixir's line metric and V8's line/branch metrics
 measure different things; neither proves every input or failure path is tested.
 Uncovered defensive guards and application-start failures remain visible in
-the report. CI retains HTML coverage reports and reference vectors on every run.
+the report. CI retains HTML coverage reports, reference vectors, and both distribution
+archives on every run. npm and Mix installs use committed lockfiles.
+The Release workflow reuses the full gate on the release tag; manual runs
+validate only. See [docs/RELEASING.md](docs/RELEASING.md) for credentials,
+public-package visibility and retry instructions.
 
 Cowboy is confined to the example's test environment. Hex currently reports two
 [cowlib advisories](https://hex.pm/packages/cowlib/advisories) even for the latest

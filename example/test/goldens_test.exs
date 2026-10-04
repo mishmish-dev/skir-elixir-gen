@@ -112,6 +112,7 @@ defmodule Skir.GoldenAssertions do
       parsed = Skir.decode_json!(t, json, unknown_fields: :preserve)
       assert Skir.to_json!(t, parsed) in Enum.map(a.expected_dense_json, &Jason.decode!/1)
     end
+
     for encoded <- a.expected_bytes ++ Enum.map(a.alternative_bytes, &bytes/1) do
       parsed = Skir.decode!(t, encoded)
       assert Skir.encode!(t, parsed) in a.expected_bytes

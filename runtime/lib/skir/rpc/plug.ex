@@ -19,9 +19,14 @@ defmodule Skir.RPC.Plug do
     case conn.method do
       "POST" ->
         case read_body(conn, service.max_request_bytes, <<>>) do
-          {:ok, body, conn} -> send_raw(conn, Skir.RPC.Service.handle_request(service, body, metadata))
-          {:too_large, conn} -> send_text(conn, 413, "request body too large")
-          {:error, conn} -> send_text(conn, 400, "invalid request body")
+          {:ok, body, conn} ->
+            send_raw(conn, Skir.RPC.Service.handle_request(service, body, metadata))
+
+          {:too_large, conn} ->
+            send_text(conn, 413, "request body too large")
+
+          {:error, conn} ->
+            send_text(conn, 400, "invalid request body")
         end
 
       "GET" ->
@@ -35,11 +40,22 @@ defmodule Skir.RPC.Plug do
 
   defp resolve_service(%Skir.RPC.Service{} = service), do: service
   defp resolve_service(fun) when is_function(fun, 0), do: resolve_service(fun.())
-  defp resolve_service({module, function, args}) when is_atom(module) and is_atom(function) and is_list(args),
-    do: resolve_service(apply(module, function, args))
-  defp resolve_service(other), do: raise(ArgumentError, "invalid Skir.RPC.Plug service: #{inspect(other)}")
 
-  defp metadata(conn, nil), do: %{headers: conn.req_headers, method: conn.method, path: conn.request_path, remote_ip: conn.remote_ip}
+  defp resolve_service({module, function, args})
+       when is_atom(module) and is_atom(function) and is_list(args),
+       do: resolve_service(apply(module, function, args))
+
+  defp resolve_service(other),
+    do: raise(ArgumentError, "invalid Skir.RPC.Plug service: #{inspect(other)}")
+
+  defp metadata(conn, nil),
+    do: %{
+      headers: conn.req_headers,
+      method: conn.method,
+      path: conn.request_path,
+      remote_ip: conn.remote_ip
+    }
+
   defp metadata(conn, fun) when is_function(fun, 1), do: fun.(conn)
 
   defp read_body(conn, limit, acc) do
@@ -59,7 +75,8 @@ defmodule Skir.RPC.Plug do
         data = acc <> chunk
         if byte_size(data) > limit, do: {:too_large, conn}, else: read_body(conn, limit, data)
 
-      {:error, _reason} -> {:error, conn}
+      {:error, _reason} ->
+        {:error, conn}
     end
   end
 

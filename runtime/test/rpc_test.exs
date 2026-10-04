@@ -1,6 +1,7 @@
 defmodule Skir.RPCTest.User do
   defstruct id: 0, name: "", __skir_unknown_fields__: %{}
   def default, do: %__MODULE__{}
+
   def schema do
     %{
       kind: :struct,
@@ -19,6 +20,7 @@ end
 
 defmodule Skir.RPCTest.Event do
   def default, do: :unknown
+
   def schema do
     %{
       kind: :enum,
@@ -29,7 +31,14 @@ defmodule Skir.RPCTest.Event do
       removed: [3],
       fields: [
         %{name: :connected, json_name: "connected", number: 1, doc: "", type: nil, key_path: []},
-        %{name: :user, json_name: "user", number: 2, doc: "", type: {:record, Skir.RPCTest.User}, key_path: []}
+        %{
+          name: :user,
+          json_name: "user",
+          number: 2,
+          doc: "",
+          type: {:record, Skir.RPCTest.User},
+          key_path: []
+        }
       ]
     }
   end
@@ -42,7 +51,13 @@ defmodule Skir.RPCTest do
   alias Skir.RPCTest.User
 
   defp method do
-    %Skir.Method{name: "GetUser", number: 12_345, doc: "Load one user.", request: :int64, response: {:record, User}}
+    %Skir.Method{
+      name: "GetUser",
+      number: 12_345,
+      doc: "Load one user.",
+      request: :int64,
+      response: {:record, User}
+    }
   end
 
   defp service(handler \\ nil) do
@@ -70,7 +85,9 @@ defmodule Skir.RPCTest do
   end
 
   test "JSON request form uses readable JSON responses" do
-    raw = Service.handle_request(service(), Jason.encode!(%{"method" => "GetUser", "request" => 42}))
+    raw =
+      Service.handle_request(service(), Jason.encode!(%{"method" => "GetUser", "request" => 42}))
+
     assert raw.status_code == 200
     assert Jason.decode!(raw.data) == %{"id" => 42, "name" => "Alice"}
   end
@@ -81,6 +98,7 @@ defmodule Skir.RPCTest do
 
     assert %{status_code: 400, data: data} =
              Service.handle_request(service(), "GetUser:12345::{")
+
     assert data =~ "bad request: can't parse JSON:"
 
     assert %{status_code: 400, data: "bad request: missing 'request' field in JSON"} =
@@ -99,13 +117,22 @@ defmodule Skir.RPCTest do
   end
 
   test "method names may collide and ambiguous name-only calls are rejected" do
-    other = %Skir.Method{name: "GetUser", number: 12_346, doc: "", request: :int64, response: {:record, User}}
+    other = %Skir.Method{
+      name: "GetUser",
+      number: 12_346,
+      doc: "",
+      request: :int64,
+      response: {:record, User}
+    }
 
     svc =
       service()
       |> Service.add_method(other, fn id, _ -> {:ok, %User{id: id, name: "Other"}} end)
 
-    assert %{status_code: 400, data: "bad request: method name 'GetUser' is ambiguous; use method number instead"} =
+    assert %{
+             status_code: 400,
+             data: "bad request: method name 'GetUser' is ambiguous; use method number instead"
+           } =
              Service.handle_request(svc, "GetUser:::1")
 
     assert %{status_code: 200, data: data} = Service.handle_request(svc, "GetUser:12346::1")
@@ -122,18 +149,24 @@ defmodule Skir.RPCTest do
 
   test "controlled service errors preserve status and use standard reason phrases by default" do
     svc = service(fn _, _ -> {:error, Skir.RPC.error(409, "already exists")} end)
+
     assert %{status_code: 409, content_type: "text/plain; charset=utf-8", data: "already exists"} =
              Service.handle_request(svc, "GetUser:12345::1")
 
     svc = service(fn _, _ -> {:error, Skir.RPC.error(404)} end)
-    assert %{status_code: 404, data: "Not Found"} = Service.handle_request(svc, "GetUser:12345::1")
+
+    assert %{status_code: 404, data: "Not Found"} =
+             Service.handle_request(svc, "GetUser:12345::1")
   end
 
   test "explicit unknown handler errors are hidden by default and selectively exposable" do
     svc = service(fn _, _ -> {:error, Skir.RPC.unknown_error("database unavailable")} end)
-    assert %{status_code: 500, data: "server error"} = Service.handle_request(svc, "GetUser:12345::1")
+
+    assert %{status_code: 500, data: "server error"} =
+             Service.handle_request(svc, "GetUser:12345::1")
 
     svc = Service.set_can_send_unknown_error_message(svc, fn _ -> true end)
+
     assert %{status_code: 500, data: "server error: database unavailable"} =
              Service.handle_request(svc, "GetUser:12345::1")
   end
@@ -153,15 +186,21 @@ defmodule Skir.RPCTest do
 
     assert %{status_code: 500, data: "server error: database unavailable"} =
              svc
-             |> Service.set_can_send_unknown_error_message(fn info -> info.method_name == "GetUser" end)
+             |> Service.set_can_send_unknown_error_message(fn info ->
+               info.method_name == "GetUser"
+             end)
              |> Service.handle_request("GetUser:12345::1")
   end
 
   test "unknown exceptions are hidden by default and can be selectively exposed" do
     svc = service(fn _, _ -> raise "secret database failure" end)
-    assert %{status_code: 500, data: "server error"} = Service.handle_request(svc, "GetUser:12345::1")
 
-    svc = Service.set_can_send_unknown_error_message(svc, fn info -> info.method_name == "GetUser" end)
+    assert %{status_code: 500, data: "server error"} =
+             Service.handle_request(svc, "GetUser:12345::1")
+
+    svc =
+      Service.set_can_send_unknown_error_message(svc, fn info -> info.method_name == "GetUser" end)
+
     assert %{status_code: 500, data: "server error: secret database failure"} =
              Service.handle_request(svc, "GetUser:12345::1")
   end
@@ -180,7 +219,13 @@ defmodule Skir.RPCTest do
 
   test "request metadata reaches handlers" do
     parent = self()
-    svc = service(fn id, meta -> send(parent, {:meta, meta}); {:ok, %User{id: id}} end)
+
+    svc =
+      service(fn id, meta ->
+        send(parent, {:meta, meta})
+        {:ok, %User{id: id}}
+      end)
+
     Service.handle_request(svc, "GetUser:12345::3", %{authorization: "Bearer t"})
     assert_receive {:meta, %{authorization: "Bearer t"}}
   end
@@ -221,8 +266,10 @@ defmodule Skir.RPCTest do
 
   test "JSON nesting is bounded before Jason allocates the request tree" do
     nested = String.duplicate("[", 65) <> "0" <> String.duplicate("]", 65)
+
     assert %{status_code: 400, data: data} =
              Service.handle_request(service(), "GetUser:12345::" <> nested)
+
     assert data =~ "bad request: can't parse JSON:"
   end
 
@@ -238,49 +285,97 @@ defmodule Skir.RPCTest do
 
   test "client emits the official dense colon body and decodes a response" do
     parent = self()
+
     transport = fn :post, url, headers, body, _opts ->
       send(parent, {:request, url, headers, body})
-      {:ok, %{status: 200, headers: [{"content-type", "application/json"}], body: ~s([42,0,"Alice"])}}
+
+      {:ok,
+       %{status: 200, headers: [{"content-type", "application/json"}], body: ~s([42,0,"Alice"])}}
     end
 
-    client = ServiceClient.new!("https://example.test/rpc", transport: transport, headers: [{"authorization", "Bearer token"}])
+    client =
+      ServiceClient.new!("https://example.test/rpc",
+        transport: transport,
+        headers: [{"authorization", "Bearer token"}]
+      )
+
     assert {:ok, %User{id: 42, name: "Alice"}} = ServiceClient.invoke(client, method(), 42)
     assert_receive {:request, "https://example.test/rpc", headers, "GetUser:12345::42"}
     assert {"authorization", "Bearer token"} in headers
-    assert Enum.any?(headers, fn {k, v} -> String.downcase(k) == "content-type" and v == "text/plain; charset=utf-8" end)
+
+    assert Enum.any?(headers, fn {k, v} ->
+             String.downcase(k) == "content-type" and v == "text/plain; charset=utf-8"
+           end)
   end
 
   test "client uses response text only for text/plain RPC errors" do
-    text_transport = fn _, _, _, _, _ -> {:ok, %{status: 404, headers: [{"Content-Type", "text/plain; charset=utf-8"}], body: "missing"}} end
-    json_transport = fn _, _, _, _, _ -> {:ok, %{status: 500, headers: [{"Content-Type", "application/json"}], body: ~s({"secret":true})}} end
+    text_transport = fn _, _, _, _, _ ->
+      {:ok,
+       %{status: 404, headers: [{"Content-Type", "text/plain; charset=utf-8"}], body: "missing"}}
+    end
+
+    json_transport = fn _, _, _, _, _ ->
+      {:ok,
+       %{status: 500, headers: [{"Content-Type", "application/json"}], body: ~s({"secret":true})}}
+    end
 
     c1 = ServiceClient.new!("https://example.test/rpc", transport: text_transport)
-    assert {:error, %RpcError{status_code: 404, message: "HTTP status 404: missing"}} = ServiceClient.invoke(c1, method(), 1)
+
+    assert {:error, %RpcError{status_code: 404, message: "HTTP status 404: missing"}} =
+             ServiceClient.invoke(c1, method(), 1)
 
     c2 = ServiceClient.new!("https://example.test/rpc", transport: json_transport)
-    assert {:error, %RpcError{status_code: 500, message: "HTTP status 500"}} = ServiceClient.invoke(c2, method(), 1)
+
+    assert {:error, %RpcError{status_code: 500, message: "HTTP status 500"}} =
+             ServiceClient.invoke(c2, method(), 1)
   end
 
   test "client maps network and response-decoding failures to status zero" do
     network = fn _, _, _, _, _ -> {:error, :econnrefused} end
     client = ServiceClient.new!("https://example.test/rpc", transport: network)
-    assert {:error, %RpcError{status_code: 0, message: message}} = ServiceClient.invoke(client, method(), 1)
+
+    assert {:error, %RpcError{status_code: 0, message: message}} =
+             ServiceClient.invoke(client, method(), 1)
+
     assert message =~ "Request failed:"
 
     invalid = fn _, _, _, _, _ -> {:ok, %{status: 200, headers: [], body: "not-json"}} end
     client = ServiceClient.new!("https://example.test/rpc", transport: invalid)
-    assert {:error, %RpcError{status_code: 0, message: message}} = ServiceClient.invoke(client, method(), 1)
+
+    assert {:error, %RpcError{status_code: 0, message: message}} =
+             ServiceClient.invoke(client, method(), 1)
+
     assert message =~ "failed to decode response"
   end
 
   test "client validates service URL and supports overriding default headers per call" do
-    assert {:error, "service URL must not contain a query string"} = ServiceClient.new("https://example.test/rpc?x=1")
+    assert {:error, "service URL must not contain a query string"} =
+             ServiceClient.new("https://example.test/rpc?x=1")
+
     assert {:error, _} = ServiceClient.new("not a url")
 
     parent = self()
-    transport = fn _, _, headers, _, _ -> send(parent, {:headers, headers}); {:ok, %{status: 200, headers: [], body: ~s([1])}} end
-    client = ServiceClient.new!("http://example.test/rpc", transport: transport, headers: %{"x-mode" => "original"}) |> ServiceClient.with_default_header("X-Mode", "default")
-    _ = ServiceClient.invoke(client, %Skir.Method{name: "N", number: 1, doc: "", request: :int32, response: {:array, :int32}}, 1, headers: [{"X-Mode", "call"}])
+
+    transport = fn _, _, headers, _, _ ->
+      send(parent, {:headers, headers})
+      {:ok, %{status: 200, headers: [], body: ~s([1])}}
+    end
+
+    client =
+      ServiceClient.new!("http://example.test/rpc",
+        transport: transport,
+        headers: %{"x-mode" => "original"}
+      )
+      |> ServiceClient.with_default_header("X-Mode", "default")
+
+    _ =
+      ServiceClient.invoke(
+        client,
+        %Skir.Method{name: "N", number: 1, doc: "", request: :int32, response: {:array, :int32}},
+        1,
+        headers: [{"X-Mode", "call"}]
+      )
+
     assert_receive {:headers, headers}
     assert Enum.count(headers, fn {k, _} -> String.downcase(k) == "x-mode" end) == 1
     assert Enum.any?(headers, fn {k, v} -> String.downcase(k) == "x-mode" and v == "call" end)
@@ -288,15 +383,23 @@ defmodule Skir.RPCTest do
 
   test "response serialization failures are always visible like TypeScript and Dart" do
     svc = service(fn _, _ -> {:ok, %User{id: "not-an-int"}} end)
+
     assert %{status_code: 500, content_type: "text/plain; charset=utf-8", data: data} =
              Service.handle_request(svc, "GetUser:12345::1")
+
     assert data =~ "server error: can't serialize response to JSON:"
   end
 
-
   test "client GET transport matches TypeScript URL.search escaping" do
     parent = self()
-    string_method = %Skir.Method{name: "Echo", number: 1, doc: "", request: :string, response: :string}
+
+    string_method = %Skir.Method{
+      name: "Echo",
+      number: 1,
+      doc: "",
+      request: :string,
+      response: :string
+    }
 
     transport = fn :get, url, _headers, "", _opts ->
       send(parent, {:url, url})
@@ -304,16 +407,21 @@ defmodule Skir.RPCTest do
     end
 
     client = ServiceClient.new!("https://example.test/rpc", transport: transport)
-    assert {:ok, "ok"} = ServiceClient.invoke(client, string_method, "a b%?&#$=+/@'", http_method: :get)
+
+    assert {:ok, "ok"} =
+             ServiceClient.invoke(client, string_method, "a b%?&#$=+/@'", http_method: :get)
+
     assert_receive {:url, "https://example.test/rpc?Echo:1::%22a%20b%25?&%23$=+/@%27%22"}
   end
 
   test "client only exposes an error body when content type matches text/plain as a MIME token" do
     transport = fn _, _, _, _, _ ->
-      {:ok, %{status: 500, headers: [{"content-type", "application/text/plainfoo"}], body: "secret"}}
+      {:ok,
+       %{status: 500, headers: [{"content-type", "application/text/plainfoo"}], body: "secret"}}
     end
 
     client = ServiceClient.new!("https://example.test/rpc", transport: transport)
+
     assert {:error, %RpcError{status_code: 500, message: "HTTP status 500"}} =
              ServiceClient.invoke(client, method(), 1)
   end
@@ -323,7 +431,9 @@ defmodule Skir.RPCTest do
 
     transport = fn method, url, headers, body, _opts ->
       send(parent, {:request, method, url, headers, body})
-      {:ok, %{status: 200, headers: [{"content-type", "application/json"}], body: ~s([42,0,"Alice"])}}
+
+      {:ok,
+       %{status: 200, headers: [{"content-type", "application/json"}], body: ~s([42,0,"Alice"])}}
     end
 
     client = ServiceClient.new!("https://example.test/rpc", transport: transport)
@@ -334,80 +444,148 @@ defmodule Skir.RPCTest do
 
   test "service options change forwarding and escape Studio script URLs" do
     echo = %{method() | request: {:record, User}}
+
     for keep <- [false, true] do
-      svc = Service.new(keep_unrecognized_values: keep, can_send_unknown_error_message: true)
+      svc =
+        Service.new(keep_unrecognized_values: keep, can_send_unknown_error_message: true)
         |> Service.add_method(echo, fn request, _ -> {:ok, request} end)
+
       raw = Service.handle_request(svc, "GetUser:12345::[1,0,\"A\",\"future\"]")
       assert Jason.decode!(raw.data) == if(keep, do: [1, 0, "A", "future"], else: [1, 0, "A"])
     end
-    html = Service.new(studio_app_js_url: "https://example.test/a?x=\"<>&") |> Service.handle_request("studio")
+
+    html =
+      Service.new(studio_app_js_url: "https://example.test/a?x=\"<>&")
+      |> Service.handle_request("studio")
+
     assert html.data =~ "https://example.test/a?x=&quot;&lt;&gt;&amp;"
     assert_raise ArgumentError, fn -> Service.new(unknown: true) end
-    assert_raise ArgumentError, fn -> Service.add_method(service(), method(), fn _, _ -> {:ok, 1} end) end
-    for invalid <- [%{method() | name: ""}, %{method() | number: -1}, %{method() | number: 0x100000000}, %{method() | doc: true}] do
-      assert_raise ArgumentError, fn -> Service.add_method(Service.new(), invalid, fn _, _ -> {:ok, 1} end) end
+
+    assert_raise ArgumentError, fn ->
+      Service.add_method(service(), method(), fn _, _ -> {:ok, 1} end)
     end
+
+    for invalid <- [
+          %{method() | name: ""},
+          %{method() | number: -1},
+          %{method() | number: 0x100000000},
+          %{method() | doc: true}
+        ] do
+      assert_raise ArgumentError, fn ->
+        Service.add_method(Service.new(), invalid, fn _, _ -> {:ok, 1} end)
+      end
+    end
+
     assert_raise ArgumentError, fn -> Skir.RPC.error(200) end
   end
 
   test "JSON dispatch rejects missing fields and invalid values while supporting readable colon responses" do
     for {body, expected} <- [
-      {nil, "invalid request body"}, {" []", "bad request: expected JSON object"},
-      {~s({"request":1}), "bad request: missing 'method' field in JSON"},
-      {"Missing:::1", "bad request: method not found: Missing"}
-    ] do
+          {nil, "invalid request body"},
+          {" []", "bad request: expected JSON object"},
+          {~s({"request":1}), "bad request: missing 'method' field in JSON"},
+          {"Missing:::1", "bad request: method not found: Missing"}
+        ] do
       assert %{status_code: 400, data: ^expected} = Service.handle_request(service(), body)
     end
+
     for body <- [~s({"method":12345,"request":7}), "GetUser:12345:readable:7"] do
       assert %{status_code: 200, data: json} = Service.handle_request(service(), body)
       assert Jason.decode!(json) == %{"id" => 7, "name" => "Alice"}
     end
+
     nested = String.duplicate("[", 65) <> "0" <> String.duplicate("]", 65)
-    for body <- [~s({"method":12345,"request":"bad"}), "{\"method\":12345,\"request\":" <> nested <> "}"] do
+
+    for body <- [
+          ~s({"method":12345,"request":"bad"}),
+          "{\"method\":12345,\"request\":" <> nested <> "}"
+        ] do
       assert %{status_code: 400} = Service.handle_request(service(), body)
     end
   end
 
   test "handler errors and failing callbacks cannot expose secrets or crash dispatch" do
-    for handler <- [fn _, _ -> raise Skir.RPC.ServiceError, status_code: 418 end,
-      fn _, _ -> throw(:secret) end, fn _, _ -> exit(:secret) end,
-      fn _, _ -> :invalid_return end, fn _, _ -> {:error, %Skir.RPC.ServiceError{status_code: 200, message: "secret"}} end] do
+    for handler <- [
+          fn _, _ -> raise Skir.RPC.ServiceError, status_code: 418 end,
+          fn _, _ -> throw(:secret) end,
+          fn _, _ -> exit(:secret) end,
+          fn _, _ -> :invalid_return end,
+          fn _, _ -> {:error, %Skir.RPC.ServiceError{status_code: 200, message: "secret"}} end
+        ] do
       raw = Service.handle_request(service(handler), "GetUser:12345::1")
       assert raw.status_code in [418, 500]
       assert raw.data in ["I'm a teapot", "server error"]
     end
-    assert_raise Skir.RPC.ServiceError, "I'm a teapot", fn -> raise Skir.RPC.ServiceError, status_code: 418 end
+
+    assert_raise Skir.RPC.ServiceError, "I'm a teapot", fn ->
+      raise Skir.RPC.ServiceError, status_code: 418
+    end
+
     parent = self()
-    for callback <- [fn _ -> raise "secret" end, fn _ -> throw(:secret) end, fn _ -> exit(:secret) end] do
-      svc = service(fn _, _ -> raise "database secret" end)
+
+    for callback <- [
+          fn _ -> raise "secret" end,
+          fn _ -> throw(:secret) end,
+          fn _ -> exit(:secret) end
+        ] do
+      svc =
+        service(fn _, _ -> raise "database secret" end)
         |> Service.set_can_send_unknown_error_message(callback)
-        |> Service.set_error_logger(fn info -> send(parent, {:logged_unknown, info}); callback.(info) end)
-      assert %{status_code: 500, data: "server error"} = Service.handle_request(svc, "GetUser:12345::1", :metadata)
-      assert_receive {:logged_unknown, %{kind: :unknown, request_metadata: :metadata, method_name: "GetUser"}}
+        |> Service.set_error_logger(fn info ->
+          send(parent, {:logged_unknown, info})
+          callback.(info)
+        end)
+
+      assert %{status_code: 500, data: "server error"} =
+               Service.handle_request(svc, "GetUser:12345::1", :metadata)
+
+      assert_receive {:logged_unknown,
+                      %{kind: :unknown, request_metadata: :metadata, method_name: "GetUser"}}
     end
   end
 
   test "invalid client options, requests and transports return errors instead of success" do
-    for {url, opts} <- [{nil, []}, {"http://example.test", [headers: [1]]}, {"http://example.test", [headers: 1]}] do
+    for {url, opts} <- [
+          {nil, []},
+          {"http://example.test", [headers: [1]]},
+          {"http://example.test", [headers: 1]}
+        ] do
       assert {:error, _} = ServiceClient.new(url, opts)
     end
+
     assert_raise ArgumentError, fn -> ServiceClient.new!("invalid") end
     transport = fn _, _, _, _, _ -> {:ok, %{status: 200, headers: [], body: "[]"}} end
     client = ServiceClient.new!("http://example.test", transport: transport)
+
     for {request, opts} <- [{"bad", []}, {1, [headers: [1]]}, {1, [http_method: :delete]}] do
-      assert {:error, %RpcError{status_code: 0}} = ServiceClient.invoke(client, method(), request, opts)
+      assert {:error, %RpcError{status_code: 0}} =
+               ServiceClient.invoke(client, method(), request, opts)
     end
-    for transport <- [1, fn _, _, _, _, _ -> :malformed end, fn _, _, _, _, _ -> raise "failed" end,
-      fn _, _, _, _, _ -> throw(:failed) end, fn _, _, _, _, _ -> exit(:failed) end,
-      fn _, _, _, _, _ -> {:error, "network failed"} end] do
+
+    for transport <- [
+          1,
+          fn _, _, _, _, _ -> :malformed end,
+          fn _, _, _, _, _ -> raise "failed" end,
+          fn _, _, _, _, _ -> throw(:failed) end,
+          fn _, _, _, _, _ -> exit(:failed) end,
+          fn _, _, _, _, _ -> {:error, "network failed"} end
+        ] do
       client = ServiceClient.new!("http://example.test", transport: transport)
-      assert {:error, %RpcError{status_code: 0, message: message}} = ServiceClient.invoke(client, method(), 1)
+
+      assert {:error, %RpcError{status_code: 0, message: message}} =
+               ServiceClient.invoke(client, method(), 1)
+
       assert message =~ "Request failed:"
       assert_raise RpcError, fn -> ServiceClient.invoke!(client, method(), 1) end
     end
-    errors = fn _, _, _, _, _ -> {:ok, %{status: 500, headers: [nil, {"x-other", "x"}], body: "secret"}} end
-    client = ServiceClient.new!("http://example.test", transport: errors)
-    assert {:error, %RpcError{message: "HTTP status 500"}} = ServiceClient.invoke(client, method(), 1)
-  end
 
+    errors = fn _, _, _, _, _ ->
+      {:ok, %{status: 500, headers: [nil, {"x-other", "x"}], body: "secret"}}
+    end
+
+    client = ServiceClient.new!("http://example.test", transport: errors)
+
+    assert {:error, %RpcError{message: "HTTP status 500"}} =
+             ServiceClient.invoke(client, method(), 1)
+  end
 end

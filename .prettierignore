@@ -1,0 +1,8 @@
+node_modules/
+.artifacts/
+reports/
+fixtures/upstream/
+example/lib/skirout/
+example/skir-src/goldens.skir
+example/skir.yml
+package-lock.json

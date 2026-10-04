@@ -35,21 +35,43 @@ case System.argv() do
 
   ["concurrent"] ->
     parent = self()
-    operations = [check,
+
+    operations = [
+      check,
       fn -> unless RecA.to_json!(RecA.default()) == [], do: raise("RecA default") end,
       fn -> unless RecB.to_json!(RecB.default()) == [], do: raise("RecB default") end,
-      fn -> unless Field.decode!(Field.encode!(Field.new(name: "leaf"))).name == "leaf", do: raise("Field codec") end,
+      fn ->
+        unless Field.decode!(Field.encode!(Field.new(name: "leaf"))).name == "leaf",
+          do: raise("Field codec")
+      end,
       fn -> unless Status.to_json!(Status.default()) == 0, do: raise("enum default") end,
-      fn -> unless Skir.RPC.TypeDescriptor.to_map(Value.type())["records"] |> length() == 2, do: raise("enum reflection") end]
-    tasks = for _ <- 1..4, operation <- operations do
-      Task.async(fn ->
-        send(parent, {:ready, self()})
-        receive do :go -> operation.() after 5_000 -> raise("start barrier timeout") end
-      end)
-    end
+      fn ->
+        unless Skir.RPC.TypeDescriptor.to_map(Value.type())["records"] |> length() == 2,
+          do: raise("enum reflection")
+      end
+    ]
+
+    tasks =
+      for _ <- 1..4, operation <- operations do
+        Task.async(fn ->
+          send(parent, {:ready, self()})
+
+          receive do
+            :go -> operation.()
+          after
+            5_000 -> raise("start barrier timeout")
+          end
+        end)
+      end
+
     for %{pid: pid} <- tasks do
-      receive do {:ready, ^pid} -> :ok after 5_000 -> raise("worker readiness timeout") end
+      receive do
+        {:ready, ^pid} -> :ok
+      after
+        5_000 -> raise("worker readiness timeout")
+      end
     end
+
     for %{pid: pid} <- tasks, do: send(pid, :go)
     for task <- tasks, do: Task.await(task, 5_000)
 

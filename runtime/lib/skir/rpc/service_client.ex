@@ -17,6 +17,7 @@ defmodule Skir.RPC.ServiceClient do
 
   @spec new(String.t(), keyword()) :: {:ok, t()} | {:error, String.t()}
   def new(service_url, opts \\ [])
+
   def new(service_url, opts) when is_binary(service_url) and is_list(opts) do
     cond do
       String.contains?(service_url, "?") ->
@@ -29,7 +30,14 @@ defmodule Skir.RPC.ServiceClient do
           headers = normalize_headers(Keyword.get(opts, :headers, []))
           transport = Keyword.get(opts, :transport, Skir.RPC.HTTPClient.Httpc)
           transport_opts = Keyword.get(opts, :transport_opts, [])
-          {:ok, %__MODULE__{service_url: service_url, headers: headers, transport: transport, transport_opts: transport_opts}}
+
+          {:ok,
+           %__MODULE__{
+             service_url: service_url,
+             headers: headers,
+             transport: transport,
+             transport_opts: transport_opts
+           }}
         else
           {:error, "service URL is not a valid URL: #{service_url}"}
         end
@@ -49,12 +57,14 @@ defmodule Skir.RPC.ServiceClient do
   end
 
   @spec with_default_header(t(), String.t(), String.t()) :: t()
-  def with_default_header(%__MODULE__{} = client, key, value) when is_binary(key) and is_binary(value) do
+  def with_default_header(%__MODULE__{} = client, key, value)
+      when is_binary(key) and is_binary(value) do
     %{client | headers: put_header(client.headers, key, value)}
   end
 
   @spec invoke(t(), Skir.Method.t(), term(), keyword()) :: {:ok, term()} | {:error, RpcError.t()}
-  def invoke(%__MODULE__{} = client, %Skir.Method{} = method, request, opts \\ []) when is_list(opts) do
+  def invoke(%__MODULE__{} = client, %Skir.Method{} = method, request, opts \\ [])
+      when is_list(opts) do
     with {:ok, request_json} <- encode_request(method, request),
          headers <- merged_headers(client.headers, Keyword.get(opts, :headers, [])),
          body = method.name <> ":" <> Integer.to_string(method.number) <> "::" <> request_json,
@@ -75,21 +85,28 @@ defmodule Skir.RPC.ServiceClient do
 
   defp encode_request(method, request) do
     case Skir.encode_json(method.request, request) do
-      {:ok, json} -> {:ok, json}
-      {:error, error} -> {:error, rpc_error(0, "failed to encode request: " <> Exception.message(error))}
+      {:ok, json} ->
+        {:ok, json}
+
+      {:error, error} ->
+        {:error, rpc_error(0, "failed to encode request: " <> Exception.message(error))}
     end
   end
 
   defp send_request(client, headers, body, opts) do
     http_method = Keyword.get(opts, :http_method, :post)
-    unless http_method in [:get, :post], do: raise(ArgumentError, "http_method must be :get or :post")
 
-    transport_opts = Keyword.merge(client.transport_opts, Keyword.drop(opts, [:headers, :http_method]))
+    unless http_method in [:get, :post],
+      do: raise(ArgumentError, "http_method must be :get or :post")
+
+    transport_opts =
+      Keyword.merge(client.transport_opts, Keyword.drop(opts, [:headers, :http_method]))
 
     {url, request_headers, request_body} =
       case http_method do
         :post ->
-          {client.service_url, put_header(headers, "content-type", "text/plain; charset=utf-8"), body}
+          {client.service_url, put_header(headers, "content-type", "text/plain; charset=utf-8"),
+           body}
 
         :get ->
           # TypeScript protects existing percent escapes before assigning URL.search.
@@ -100,9 +117,20 @@ defmodule Skir.RPC.ServiceClient do
 
     result =
       cond do
-        is_function(client.transport, 5) -> client.transport.(http_method, url, request_headers, request_body, transport_opts)
-        is_atom(client.transport) -> client.transport.request(http_method, url, request_headers, request_body, transport_opts)
-        true -> {:error, :invalid_transport}
+        is_function(client.transport, 5) ->
+          client.transport.(http_method, url, request_headers, request_body, transport_opts)
+
+        is_atom(client.transport) ->
+          client.transport.request(
+            http_method,
+            url,
+            request_headers,
+            request_body,
+            transport_opts
+          )
+
+        true ->
+          {:error, :invalid_transport}
       end
 
     case result do
@@ -122,10 +150,14 @@ defmodule Skir.RPC.ServiceClient do
     kind, value -> {:error, rpc_error(0, "Request failed: #{kind}: #{inspect(value)}")}
   end
 
-  defp handle_response(method, %{status: status, headers: _headers, body: body}) when status >= 200 and status < 300 do
+  defp handle_response(method, %{status: status, headers: _headers, body: body})
+       when status >= 200 and status < 300 do
     case Skir.decode_json(method.response, body, unknown_fields: :preserve) do
-      {:ok, response} -> {:ok, response}
-      {:error, error} -> {:error, rpc_error(0, "failed to decode response: " <> Exception.message(error))}
+      {:ok, response} ->
+        {:ok, response}
+
+      {:error, error} ->
+        {:error, rpc_error(0, "failed to decode response: " <> Exception.message(error))}
     end
   end
 
@@ -141,7 +173,9 @@ defmodule Skir.RPC.ServiceClient do
         if String.downcase(key) == "content-type",
           do: Regex.match?(~r/text\/plain\b/, String.downcase(value)),
           else: false
-      _ -> false
+
+      _ ->
+        false
     end)
   end
 
@@ -156,7 +190,9 @@ defmodule Skir.RPC.ServiceClient do
   defp get_query_char?(_char), do: false
 
   defp merged_headers(defaults, additions) do
-    Enum.reduce(normalize_headers(additions), defaults, fn {key, value}, acc -> put_header(acc, key, value) end)
+    Enum.reduce(normalize_headers(additions), defaults, fn {key, value}, acc ->
+      put_header(acc, key, value)
+    end)
   end
 
   defp put_header(headers, key, value) do
@@ -165,14 +201,18 @@ defmodule Skir.RPC.ServiceClient do
     filtered ++ [{key, value}]
   end
 
-  defp normalize_headers(headers) when is_map(headers), do: normalize_headers(Map.to_list(headers))
+  defp normalize_headers(headers) when is_map(headers),
+    do: normalize_headers(Map.to_list(headers))
+
   defp normalize_headers(headers) when is_list(headers) do
     Enum.map(headers, fn
       {key, value} when is_binary(key) and is_binary(value) -> {key, value}
       other -> raise ArgumentError, "invalid HTTP header: #{inspect(other)}"
     end)
   end
-  defp normalize_headers(other), do: raise(ArgumentError, "invalid HTTP headers: #{inspect(other)}")
+
+  defp normalize_headers(other),
+    do: raise(ArgumentError, "invalid HTTP headers: #{inspect(other)}")
 
   defp format_reason(reason) when is_binary(reason), do: reason
   defp format_reason(reason), do: inspect(reason)

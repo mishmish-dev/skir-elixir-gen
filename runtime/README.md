@@ -33,6 +33,7 @@ mix deps.get
 mix test
 ```
 
-**Not yet compiled or executed in the authoring sandbox.** Run the parent
-`npm run test:all` gate and a security review before production use. Passing Node
-source/generator tests is not proof that this runtime compiles or interoperates.
+The parent `npm run test:all` gate compiles and tests the native runtime on
+Elixir 1.20.4 / OTP 27, 28 and 29, with a 90% minimum line coverage check.
+It also installs the actual Hex archive in a fresh generated-code application.
+See the parent `VERIFICATION.md` for interoperability evidence and limitations.

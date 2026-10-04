@@ -15,9 +15,13 @@
   },
   "files": [
     "src",
-    "runtime",
-    "docs",
-    "scripts",
+    "runtime/lib",
+    "runtime/mix.exs",
+    "runtime/README.md",
+    "runtime/LICENSE",
+    "docs/RELEASING.md",
+    "docs/SKIRRPC.md",
+    "docs/SKIRRPC_PARITY.md",
     "README.md",
     "VERIFICATION.md",
     "LICENSE"
@@ -25,21 +29,29 @@
   "scripts": {
     "test": "node --test test/*.test.mjs",
     "generate:fixtures": "node scripts/generate-fixtures.mjs",
-    "test:elixir": "npm run generate && cd example && mix deps.get && mix test --cover --warnings-as-errors",
+    "test:elixir": "npm run generate && cd example && mix deps.get --check-locked && mix test --cover --warnings-as-errors",
     "test:integration": "node scripts/integration.mjs",
     "check": "node --check src/generator.js && node --check src/naming.js && node --check src/index.js",
     "configure": "node scripts/configure-example.mjs",
     "generate": "npm run configure && cd example && skir gen",
-    "test:runtime": "cd runtime && mix deps.get && mix test",
-    "test:all": "npm run check && npm run test:coverage && npm run test:integration && npm run test:rpc-parity",
+    "test:runtime": "cd runtime && mix deps.get --check-locked && mix test",
+    "test:all": "npm run check && npm run lint && npm run format:check && npm run test:coverage && npm run test:integration && npm run test:rpc-parity && npm run test:package",
     "test:rpc-parity": "node scripts/rpc-parity.mjs",
-    "test:coverage": "node --test --experimental-test-coverage test/*.test.mjs"
+    "test:coverage": "node --test --experimental-test-coverage test/*.test.mjs",
+    "lint": "eslint .",
+    "format:check": "prettier --check \"src/**/*.{js,ts}\" \"scripts/**/*.mjs\" \"test/**/*.mjs\" \"fixtures/*.mjs\" eslint.config.js package.json .prettierrc.json \".github/workflows/*.yml\" && mix format --check-formatted",
+    "format": "prettier --write \"src/**/*.{js,ts}\" \"scripts/**/*.mjs\" \"test/**/*.mjs\" \"fixtures/*.mjs\" eslint.config.js package.json .prettierrc.json \".github/workflows/*.yml\" && mix format",
+    "test:package": "node scripts/package-smoke.mjs"
   },
   "dependencies": {
     "skir-internal": "0.2.21",
     "zod": "4.3.6"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.12.0",
+    "globals": "17.13.0",
+    "prettier": "3.9.9",
     "skir": "1.2.22",
     "skir-client": "1.0.19",
     "skir-typescript-gen": "1.0.11"
