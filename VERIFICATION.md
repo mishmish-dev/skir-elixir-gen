@@ -9,7 +9,7 @@ and Elixir 1.20.4 on pinned OTP 27.3.4.18, 28.5.0.7, and 29.1.1 releases.
 | Generator syntax and Node tests | Four table-driven tests passed, no failures or skips. |
 | JavaScript coverage (Node/V8) | Generator core: 99.15% lines, 94.94% branches, 100% functions. Plugin and naming helpers: 100% lines/branches/functions. |
 | Combined native suite | 171 passed: 44 runtime/Plug tests and 127 generated-code/example tests, including all 101 upstream golden cases. |
-| Elixir coverage (Mix) | 98.89% lines across all handwritten runtime modules and `Example.RPC`; minimum 98% enforced. |
+| Elixir coverage (Mix) | 98.89% lines across all handwritten runtime modules and `Example.RPC`; reported without enforcing a minimum. |
 | Raw RPC parity | 16 server cases and GET/POST client wire checks passed. |
 | Real Skir compiler and serialization interoperability | 209 vectors passed, including dense/readable JSON, canonical binary, recursion, unknown preservation, and long bytes. |
 

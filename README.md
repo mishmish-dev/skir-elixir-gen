@@ -8,7 +8,8 @@ uses Gleam, a port, a NIF, or a JavaScript process for serialization.
 four table-driven Node tests, 171 native Elixir tests (runtime and generated APIs),
 16 RPC server parity cases plus GET/POST client checks, and 209 serialization
 interoperability vectors. Measured line coverage is 99.15% for the generator core, 100% for the plugin
-and naming helpers, and 98.89% for handwritten Elixir, with a 98% Elixir minimum enforced.
+and naming helpers, and 98.89% for handwritten Elixir. Coverage is reported
+without a minimum threshold.
 CI runs the same gate on OTP 27.3.4.18, 28.5.0.7, and 29.1.1. See
 [VERIFICATION.md](VERIFICATION.md) for results and interoperability limitations.
 
