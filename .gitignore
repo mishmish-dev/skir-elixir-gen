@@ -2,16 +2,14 @@ node_modules/
 _build/
 deps/
 .artifacts/
-example/skir.yml
-example/reference/
 *.tgz
 .DS_Store
-# Existing generated samples are tracked; additional test bindings are regenerated.
-example/lib/skirout/
 
 # Keep local configuration and credentials out of Git.
 .env
 .env.*
 !.env.example
 
-runtime/*.tar
+example/skir.yml
+example/reference/
+example/lib/skirout/

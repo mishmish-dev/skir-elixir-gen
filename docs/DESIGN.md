@@ -1,3 +1,6 @@
+> Historical implementation notes from before the client repository split.
+> For current ownership and commands, see README.md and docs/RELEASING.md.
+
 # Native Skir Elixir design
 
 Build a standalone Skir compiler plugin, not a Gleam wrapper. The generator consumes the upstream resolved Module/RecordLocation/ResolvedType contract and returns Elixir source files. Runtime code is an independent Mix project. No repository or application was supplied, so no existing project is modified.

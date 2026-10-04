@@ -1,3 +1,6 @@
+> Historical implementation notes from before the client repository split.
+> For current ownership and commands, see README.md and docs/RELEASING.md.
+
 # Release and CI completion
 
 User-approved scope: fix the five CI/release gaps identified in the comparison

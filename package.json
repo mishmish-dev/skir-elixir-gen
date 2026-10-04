@@ -1,7 +1,7 @@
 {
   "name": "skir-elixir-gen",
   "version": "0.3.0",
-  "description": "Native Elixir code generation and SkirRPC support for Skir schemas",
+  "description": "Native Elixir code generation for Skir schemas",
   "type": "module",
   "license": "MIT",
   "engines": {
@@ -15,33 +15,25 @@
   },
   "files": [
     "src",
-    "runtime/lib",
-    "runtime/mix.exs",
-    "runtime/README.md",
-    "runtime/LICENSE",
     "docs/RELEASING.md",
-    "docs/SKIRRPC.md",
-    "docs/SKIRRPC_PARITY.md",
     "README.md",
     "VERIFICATION.md",
     "LICENSE"
   ],
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "generate:fixtures": "node scripts/generate-fixtures.mjs",
-    "test:elixir": "npm run generate && cd example && mix deps.get --check-locked && mix test --cover --warnings-as-errors",
-    "test:integration": "node scripts/integration.mjs",
     "check": "node --check src/generator.js && node --check src/naming.js && node --check src/index.js",
-    "configure": "node scripts/configure-example.mjs",
-    "generate": "npm run configure && cd example && skir gen",
-    "test:runtime": "cd runtime && mix deps.get --check-locked && mix test",
-    "test:all": "npm run check && npm run lint && npm run format:check && npm run test:coverage && npm run test:integration && npm run test:rpc-parity && npm run test:package",
-    "test:rpc-parity": "node scripts/rpc-parity.mjs",
+    "test:all": "npm run check && npm run lint && npm run format:check && npm run test:coverage && npm run test:integration && npm run test:package",
     "test:coverage": "node --test --experimental-test-coverage test/*.test.mjs",
     "lint": "eslint .",
     "format:check": "prettier --check \"src/**/*.{js,ts}\" \"scripts/**/*.mjs\" \"test/**/*.mjs\" \"fixtures/*.mjs\" eslint.config.js package.json .prettierrc.json \".github/workflows/*.yml\" && mix format --check-formatted",
     "format": "prettier --write \"src/**/*.{js,ts}\" \"scripts/**/*.mjs\" \"test/**/*.mjs\" \"fixtures/*.mjs\" eslint.config.js package.json .prettierrc.json \".github/workflows/*.yml\" && mix format",
-    "test:package": "node scripts/package-smoke.mjs"
+    "test:package": "node scripts/package-smoke.mjs",
+    "configure": "node scripts/configure-example.mjs",
+    "generate": "npm run configure && cd example && skir gen",
+    "generate:fixtures": "node scripts/generate-fixtures.mjs",
+    "test:elixir": "npm run generate && cd example && mix deps.get --check-locked && mix test --cover --warnings-as-errors",
+    "test:integration": "node scripts/integration.mjs"
   },
   "dependencies": {
     "skir-internal": "0.2.21",

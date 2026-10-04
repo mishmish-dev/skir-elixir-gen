@@ -29,6 +29,7 @@ jobs:
   checks:
     needs: validate
     uses: ./.github/workflows/ci.yml
+    secrets: inherit
   npm:
     needs: checks
     if: github.event_name == 'release'
@@ -42,7 +43,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: interop-otp-29.1.1-elixir-1.20.4
-          path: .artifacts
+          path: .artifacts/packages
       - name: Publish tested npm tarball
         env:
           NODE_AUTH_TOKEN: ${{ secrets.npm_token }}
@@ -50,32 +51,3 @@ jobs:
           test -n "$NODE_AUTH_TOKEN" || { echo '::error::Missing npm_token publishing secret'; exit 1; }
           version=$(node -p 'require("./package.json").version')
           npm publish ".artifacts/packages/skir-elixir-gen-$version.tgz" --ignore-scripts --access public
-  hex:
-    needs: checks
-    if: github.event_name == 'release'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: erlef/setup-beam@v1
-        with:
-          elixir-version: '1.20.4'
-          otp-version: '29.1.1'
-          version-type: strict
-      - name: Prepare native runtime
-        working-directory: runtime
-        env:
-          MIX_ENV: prod
-        run: |
-          mix local.hex --force
-          mix local.rebar --force
-          mix deps.get --check-locked
-          mix compile --warnings-as-errors
-      - name: Publish Hex runtime
-        working-directory: runtime
-        env:
-          MIX_ENV: prod
-          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
-        run: |
-          test -n "$HEX_API_KEY" || { echo '::error::Missing HEX_API_KEY publishing secret'; exit 1; }
-          mix hex.publish package --dry-run --yes
-          mix hex.publish package --yes

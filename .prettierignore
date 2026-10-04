@@ -1,8 +1,10 @@
 node_modules/
 .artifacts/
 reports/
+package-lock.json
+
 fixtures/upstream/
 example/lib/skirout/
+example/reference/
 example/skir-src/goldens.skir
 example/skir.yml
-package-lock.json

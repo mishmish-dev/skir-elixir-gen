@@ -1,6 +1,9 @@
 name: Build
 on:
   workflow_call:
+    secrets:
+      SKIR_ELIXIR_CLIENT_DEPLOY_KEY:
+        required: true
   push:
     branches: [main]
   pull_request:
@@ -11,22 +14,38 @@ jobs:
   test:
     name: Elixir ${{ matrix.elixir-version }} / OTP ${{ matrix.otp-version }}
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: skir-elixir-gen
     strategy:
       fail-fast: false
       matrix:
-        node-version: [20.x]
         elixir-version: ['1.20.4']
-        # Latest stable release of each supported OTP major, checked 2026-10-04.
         otp-version: ['27.3.4.18', '28.5.0.7', '29.1.1']
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          path: skir-elixir-gen
+      - name: Read pinned client revision
+        id: client
+        run: |
+          revision=$(cat .client-revision)
+          [[ "$revision" =~ ^[0-9a-f]{40}$ ]] || { echo '::error::Invalid client revision'; exit 1; }
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+      - name: Check out companion client
+        uses: actions/checkout@v4
+        with:
+          repository: mishmish-dev/skir-elixir-client
+          ref: ${{ steps.client.outputs.revision }}
+          path: skir-elixir-client
+          ssh-key: ${{ secrets.SKIR_ELIXIR_CLIENT_DEPLOY_KEY }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
           cache: npm
-      - name: Set up Elixir and Erlang/OTP
-        uses: erlef/setup-beam@v1
+          cache-dependency-path: skir-elixir-gen/package-lock.json
+      - uses: erlef/setup-beam@v1
         with:
           elixir-version: ${{ matrix.elixir-version }}
           otp-version: ${{ matrix.otp-version }}
@@ -36,13 +55,13 @@ jobs:
           npm ci --ignore-scripts
           mix local.hex --force
           mix local.rebar --force
-      - name: Generator, native runtime, and upstream interoperability
+      - name: Generator tests, binding coverage, interoperability and npm consumer
         run: npm run test:all
-      - name: Preserve coverage and reference vectors
+      - name: Preserve test reports and package archive
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: interop-otp-${{ matrix.otp-version }}-elixir-${{ matrix.elixir-version }}
-          path: .artifacts/
+          path: skir-elixir-gen/.artifacts/
           include-hidden-files: true
           if-no-files-found: error

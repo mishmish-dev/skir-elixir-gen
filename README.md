@@ -1,59 +1,41 @@
 # skir-elixir-gen — native Elixir code generation for Skir
 
-An **unofficial, initial implementation**, maintained in this standalone repository. It emits native
-Elixir structs and tagged enum values. Neither the generated code nor its runtime
-uses Gleam, a port, a NIF, or a JavaScript process for serialization.
+An unofficial Skir compiler plugin that emits native Elixir structs, enums,
+codecs, constants, reflection and RPC helpers. Generated code uses the separate
+[skir-elixir-client](https://github.com/mishmish-dev/skir-elixir-client) Mix package.
+This repository contains no runtime source or runtime unit tests.
 
-**Verification status:** `npm run test:all` passes on Elixir 1.20.4 / OTP 29:
-four table-driven Node tests, 171 native Elixir tests (runtime and generated APIs),
-16 RPC server parity cases plus GET/POST client checks, and 209 serialization
-interoperability vectors. Measured line coverage is 99.49% for the generator core, 100% for the plugin
-and naming helpers, and 98.96% for handwritten Elixir. Coverage is reported
-with a 90% minimum enforced for Elixir.
-CI runs the same gate on OTP 27.3.4.18, 28.5.0.7, and 29.1.1. See
-[VERIFICATION.md](VERIFICATION.md) for results and interoperability limitations.
+## Development
 
-## Repository
-
-This repository starts from the existing `skir-elixir-0.3.0` implementation.
-It contains the npm generator and its companion Elixir runtime; both remain
-unpublished packages. The repository is private initially. CI validates both distribution archives;
-[release instructions](docs/RELEASING.md) describe npm and Hex publishing and
-the required GitHub secrets.
+Clone both repositories as siblings and select the client revision used by CI:
 
 ```sh
 git clone https://github.com/mishmish-dev/skir-elixir-gen.git
+git clone https://github.com/mishmish-dev/skir-elixir-client.git
 cd skir-elixir-gen
+git -C ../skir-elixir-client checkout "$(cat .client-revision)"
 npm ci --ignore-scripts
-npm run check
-npm test
+mix local.hex --force
+mix local.rebar --force
+npm run test:all
 ```
 
-The reports under `reports/` preserve the original implementation's verification
-results. [VERIFICATION.md](VERIFICATION.md) starts with the current full-gate
-results and retains the original report as historical context.
+Requires Node 20+, Elixir and Mix. CI pins Elixir 1.20.4 and OTP 27.3.4.18,
+28.5.0.7 and 29.1.1. The private client checkout uses a read-only deploy key.
+Generator and runtime versions are independent; npm and Hex releases are owned
+by their respective repositories. See [release instructions](docs/RELEASING.md).
 
 ## Layout
 
-```text
-src/                       npm plugin and dependency-free generator core
-runtime/                   native codecs + SkirRPC service/client/Plug adapter
-example/skir-src/           real Skir example schemas
-example/lib/skirout/        sample generated Elixir (from resolved-IR fixtures)
-test/                      Node generator-core tests
-runtime/test/              ExUnit codec + SkirRPC + Plug tests
-example/test/              upstream goldens, generated API, live HTTP, cold-start tests
-fixtures/upstream/         pinned golden corpus provenance and license
-scripts/integration.mjs    real compiler + upstream TypeScript serialization interoperability
-scripts/rpc-parity.mjs   official TypeScript ↔ native Elixir SkirRPC oracle
-.github/workflows/ci.yml   full test gate on OTP 27, 28, and 29
-```
+- `src/`: npm plugin and generator core.
+- `example/`: schemas, generated bindings and 127 binding/integration tests.
+- `test/`: four table-driven Node generator tests.
+- `fixtures/upstream/`: pinned upstream golden corpus provenance and license.
+- `scripts/integration.mjs`: real compiler and 209 TypeScript interoperability vectors.
+- `scripts/package-smoke.mjs`: fresh consumer of the actual npm archive.
 
-The plugin targets the interfaces declared by `skir@1.2.22` and
-`skir-internal@0.2.21`. Reference dependencies are pinned to `skir-client@1.0.19`
-and `skir-typescript-gen@1.0.11`. These dependencies have been installed and
-exercised by the integration gates. Runtime target: Elixir 1.14+ with a compatible
-Erlang/OTP release. Node target: 20+.
+Runtime unit tests and the raw RPC oracle belong to the client repository.
+See [VERIFICATION.md](VERIFICATION.md) for coverage scope and compatibility limits.
 
 ## Run the example
 
@@ -128,8 +110,8 @@ Phoenix/Plug applications can mount `Skir.RPC.Plug` with `forward "/rpc",
 Skir.RPC.Plug, service: &MyApp.RPC.service/0`. Studio (`?studio`), method
 reflection (`?list`), controlled/unknown errors, request metadata, the compact
 SkirRPC HTTP wire format, and a pluggable client transport are implemented. See
-[`docs/SKIRRPC.md`](docs/SKIRRPC.md) for the complete API and
-[`docs/SKIRRPC_PARITY.md`](docs/SKIRRPC_PARITY.md) for the official-runtime parity audit.
+[the client RPC guide](https://github.com/mishmish-dev/skir-elixir-client/blob/main/docs/SKIRRPC.md) for the complete API and
+[the client parity audit](https://github.com/mishmish-dev/skir-elixir-client/blob/main/docs/SKIRRPC_PARITY.md) for the official-runtime parity audit.
 
 
 Every generated record module has `new/1` (structs only), `default/0`, `type/0`,
@@ -152,20 +134,21 @@ values only when serializing; typespecs are not runtime enforcement.
 
 ## Use in an existing application
 
-Vendor this source package, for example under `vendor/skir-elixir`. Add the
-runtime as a **local** dependency in your application's `mix.exs`:
+Clone the client repository separately, for example under
+`vendor/skir-elixir-client`. Add it as a local dependency in your application's
+`mix.exs`:
 
 ```elixir
-{:skir, path: "vendor/skir-elixir/runtime"}
+{:skir, path: "vendor/skir-elixir-client"}
 ```
 
-Neither component is published by this implementation. Do not assume
+Both packages are currently unpublished. Do not assume
 `{:skir, "~> 0.2"}` on Hex or an npm registry package belongs to this project.
 
 Install the generator locally alongside the Skir compiler:
 
 ```sh
-npm install --save-dev skir@1.2.22 ./vendor/skir-elixir
+npm install --save-dev skir@1.2.22 ./vendor/skir-elixir-gen
 ```
 
 Then add this generator entry to your existing `skir.yml`:
@@ -301,12 +284,7 @@ npm run check
 npm run generate:fixtures
 
 # Requires Elixir and access to Hex for runtime and test-only HTTP dependencies.
-npm run test:runtime
 npm run test:elixir
-
-# Requires npm dependencies, Elixir and Hex. Compares raw SkirRPC behavior with
-# the official TypeScript Service implementation.
-npm run test:rpc-parity
 
 # Requires npm dependencies, Elixir and Hex. Uses real .skir input, not the IR fixture.
 npm run test:integration
@@ -318,7 +296,7 @@ npm run test:all
 `generate:fixtures` intentionally uses a hand-built resolved-IR fixture, not a
 Skir parser. Both `test:elixir` and the integration command regenerate example outputs using
 the real compiler. Integration compiles the native modules with warnings-as-errors, runs the
-runtime and example tests together once, and exchanges JSON and byte-for-byte binary vectors with the
+127 example tests once, and exchanges JSON and byte-for-byte binary vectors with the
 upstream TypeScript runtime. It includes deterministic generated cases and
 unknown-data preservation. A missing tool is a failure, never a skipped success.
 It writes `.artifacts/reference-vectors.json` and `.artifacts/elixir-vectors.json`.
@@ -340,14 +318,13 @@ releases workers together after a readiness barrier and mixes first access to
 defaults, codecs, and descriptors. These checks run through `test:elixir`,
 `test:all`, and every CI matrix entry.
 
-The full gate measures JavaScript coverage with Node and Elixir line coverage
-with Mix. Only generated `Example.Protocol.*` modules are excluded from the Mix
-percentage; all handwritten runtime modules and the example RPC service are
-included. Generated APIs are checked by the golden and native API tests. Fresh
-BEAM subprocesses are tested but do not contribute to the parent coverage report.
-CI uploads HTML coverage reports and reference vectors for every matrix entry.
-`test:runtime` remains available for focused runtime checks; the full gate runs
-those tests in the combined example suite to avoid repeating them.
+The full gate reports JavaScript coverage with Node and Elixir line coverage
+with Mix. Mix enforces a 90% threshold for handwritten example code; generated
+`Example.Protocol.*` modules are excluded. The client dependency is not
+instrumented here and its unit tests are not included in this suite. Generated
+bindings are checked by the golden and native API tests. Fresh BEAM subprocesses
+do not contribute to the parent coverage report. CI uploads coverage and
+reference vectors for every matrix entry.
 
 ## Current boundaries / release gate
 
@@ -360,14 +337,13 @@ Native SkirRPC transport, generated client/server helpers, Phoenix/Plug routing,
 Studio, and reflection are included. The SkirRPC surface has been source-audited
 against the official TypeScript, Dart, and Gleam runtimes; where TypeScript and
 Dart agree, 0.3.0 treats that behavior as the compatibility baseline. The
-executable TypeScript ↔ Elixir raw-response oracle is included as
-`npm run test:rpc-parity` and passes on Elixir 1.20.4 / OTP 29.
+executable TypeScript ↔ Elixir raw-response oracle runs in the client repository.
 
 Not included: streaming RPC (not part of the current SkirRPC wire protocol), OTP
 release benchmarking, a live Dart ↔ Phoenix interoperability run, or independent
 security/fuzz review. One current upstream TypeScript `list` anomaly writes the
 method name into the `number` field; Elixir intentionally follows the numeric-ID
-behavior used by Dart and Gleam instead. See `docs/SKIRRPC_PARITY.md`.
+behavior used by Dart and Gleam instead. See the [client RPC parity guide](https://github.com/mishmish-dev/skir-elixir-client/blob/main/docs/SKIRRPC_PARITY.md).
 
 Before adopting it in production, run the complete test gate on the intended
 Elixir/OTP versions, add your schemas and Dart-produced vectors, review the native

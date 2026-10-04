@@ -1,50 +1,27 @@
-# Releases
+# Generator releases
 
-The npm generator `skir-elixir-gen` and Hex runtime `skir` share version `0.3.0`.
-They remain unpublished until a stable GitHub release is published.
-Both registries publish **public packages**, even while this GitHub repository
-is private. Publishing discloses the packaged source and documentation.
+This repository publishes only `skir-elixir-gen` to npm. The companion
+[client repository](https://github.com/mishmish-dev/skir-elixir-client) owns Hex
+publication and has an independent version.
 
-## Credentials (one-time setup)
+Repository Actions secrets:
 
-Add these repository secrets in GitHub Settings → Secrets and variables → Actions:
+- `npm_token`: npm publishing token for `skir-elixir-gen`.
+- `SKIR_ELIXIR_CLIENT_DEPLOY_KEY`: read-only SSH deploy key for the private client.
+  Tests check out exactly the commit stored in `.client-revision`.
 
-- `npm_token`: an npm **granular** token with permission to publish
-  `skir-elixir-gen` and bypass 2FA enabled for automated publishing. Configure
-  package access on the publishing account and rotate the token before expiry.
-- `HEX_API_KEY`: a Hex API key with package-write permission for `skir`.
-  The publishing account must own the package after the first publication.
+To release:
 
-The workflow fails with a clear error if its credential is absent. Credentials
-are only available to publication steps, never PR checks. Do not commit tokens.
-See [npm's CI documentation](https://docs.npmjs.com/using-private-packages-in-a-ci-cd-workflow/)
-and [Hex publication instructions](https://hex.hexdocs.pm/Mix.Tasks.Hex.Publish.html).
-The names were unclaimed when checked on 2026-10-04; availability can change.
+1. Set `package.json` version and update `package-lock.json`. Update the client
+   revision explicitly when changing the compatible runtime baseline.
+2. Run `npm ci --ignore-scripts`, initialize Hex/Rebar and run `npm run test:all`
+   with the pinned client checked out as a sibling.
+3. Optionally dispatch the Release workflow; it validates all three OTP entries
+   and never publishes during manual runs.
+4. Publish a stable GitHub release tagged `vX.Y.Z` matching `package.json`.
+   The release reruns CI, then publishes the exact npm archive from OTP 29.
 
-## Validate and release
-
-1. Set the same version in `package.json` and `runtime/mix.exs`. Update the npm
-   lockfile with `npm install --package-lock-only --ignore-scripts` and commit.
-2. Run `npm ci --ignore-scripts`, initialize Hex/Rebar, and run `npm run test:all`.
-   This includes lint/format checks, 90% minimum native coverage, both oracles,
-   npm publication dry-run, local Hex build checks, and a fresh consumer install of both tarballs.
-3. Optionally run the **Release** workflow manually on the intended commit.
-   Manual runs execute the complete OTP 27/28/29 matrix and **never publish**.
-4. Create a stable GitHub release tagged `vX.Y.Z` at that commit and publish it.
-   Drafts and prereleases do not publish packages; mismatched tags fail early.
-   The release reruns the full matrix at the tag before either registry upload.
-
-npm publishes the exact tarball retained by the OTP 29 checks. Hex rebuilds the
-validated runtime from the same tag using the committed production dependency
-lockfile and publishes the package without HexDocs. API usage documentation is
-included in the package README; generating hosted HexDocs can be added later.
-CI artifacts retain both distributable tarballs and the coverage/reference data.
-Hex 2.5.1 requests authentication even for `hex.publish --dry-run`, so ordinary
-CI uses `hex.build` and an isolated consumer install. The authenticated release
-step also performs the Hex publication dry-run before uploading.
-
-npm and Hex publication jobs are independent. If one upload succeeds and the
-other fails, fix its credential or registry issue and **re-run failed jobs** on
-the same release run. Do not rerun the successful job: registries generally
-reject republishing an existing version. Never overwrite a released version;
-substantive fixes require a new version and tag.
+Drafts and prereleases do not publish. An absent publishing token fails with a
+clear error. Registry publication makes the archive public even if the source
+repository is private. Never overwrite a published version. If publication
+fails, fix the credential or registry issue and rerun the failed job.

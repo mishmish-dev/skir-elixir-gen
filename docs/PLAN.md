@@ -1,3 +1,6 @@
+> Historical implementation notes from before the client repository split.
+> For current ownership and commands, see README.md and docs/RELEASING.md.
+
 # Native Skir Elixir Implementation Plan
 
 **Goal:** Deliver a native code generator, pure-Elixir runtime, and reproducible tests.
