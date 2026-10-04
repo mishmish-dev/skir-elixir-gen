@@ -33,7 +33,7 @@
     "test:runtime": "cd runtime && mix deps.get && mix test",
     "test:all": "npm run check && npm run test:coverage && npm run test:integration && npm run test:rpc-parity",
     "test:rpc-parity": "node scripts/rpc-parity.mjs",
-    "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=src/*.js test/*.test.mjs"
+    "test:coverage": "node --test --experimental-test-coverage test/*.test.mjs"
   },
   "dependencies": {
     "skir-internal": "0.2.21",

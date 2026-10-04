@@ -1,13 +1,13 @@
 # Verification report — 2026-10-04
 
-`npm run test:all` completed successfully on Node 24.17.0 and the official
+`npm run test:all` completed successfully on Node 20.20.2 and the official
 `elixir:1.20.4` Docker image (Erlang/OTP 29). CI runs this same gate with Node 20
 and Elixir 1.20.4 on pinned OTP 27.3.4.18, 28.5.0.7, and 29.1.1 releases.
 
 | Check | Observed result |
 |---|---|
 | Generator syntax and Node tests | Four table-driven tests passed, no failures or skips. |
-| JavaScript coverage (Node/V8) | 99.32% lines, 95.89% branches, 100% functions across `src/*.js`. |
+| JavaScript coverage (Node/V8) | Generator core: 99.15% lines, 94.94% branches, 100% functions. Plugin and naming helpers: 100% lines/branches/functions. |
 | Combined native suite | 171 passed: 44 runtime/Plug tests and 127 generated-code/example tests, including all 101 upstream golden cases. |
 | Elixir coverage (Mix) | 98.89% lines across all handwritten runtime modules and `Example.RPC`; minimum 98% enforced. |
 | Raw RPC parity | 16 server cases and GET/POST client wire checks passed. |
@@ -56,7 +56,9 @@ percent escapes and leaving the host/path intact. The public client URL contract
 and TypeScript wire parity check remain unchanged.
 
 Coverage uses Node's built-in V8 reporter and Mix's built-in `:cover` reporter,
-without an added coverage dependency. Mix instruments the local runtime
+without an added coverage dependency. The Node command uses the coverage flag
+supported by Node 20; its report also includes fixture/test code, so the metrics
+above quote production source modules individually. Mix instruments the local runtime
 alongside the example. Generated `Example.Protocol.*` modules are the only
 exclusion from the percentage; their behavior is tested through the compiler,
 golden corpus, and native API checks. Fresh BEAM subprocesses do not contribute
