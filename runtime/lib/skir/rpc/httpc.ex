@@ -23,7 +23,7 @@ defmodule Skir.RPC.HTTPClient.Httpc do
       uri = URI.parse(url)
       url = if uri.query do
         query = URI.encode(uri.query, &(URI.char_unreserved?(&1) or &1 in ~c"!$&'()*+,;=:@/?%"))
-        URI.to_string(%{uri | query: query})
+        URI.to_string(Map.put(uri, :query, query))
       else
         url
       end
