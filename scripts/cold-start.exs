@@ -1,5 +1,5 @@
 # Run each scenario in a new BEAM so prior access cannot hide initialization bugs.
-alias Example.Protocol.ApiSkir.{RecA, RecB, Field, Value}
+alias Example.Protocol.ApiSkir.{RecA, RecB, Field, Value, Status}
 
 check = fn ->
   value = RecA.new(name: "root", b: RecB.new(links: [RecA.new(name: "leaf")]))
@@ -34,8 +34,24 @@ case System.argv() do
     check.()
 
   ["concurrent"] ->
-    results = Task.async_stream(1..32, fn _ -> check.() end, max_concurrency: 8, timeout: 5_000)
-    unless Enum.all?(results, &(&1 == {:ok, :ok})), do: raise("concurrent initialization failed")
+    parent = self()
+    operations = [check,
+      fn -> unless RecA.to_json!(RecA.default()) == [], do: raise("RecA default") end,
+      fn -> unless RecB.to_json!(RecB.default()) == [], do: raise("RecB default") end,
+      fn -> unless Field.decode!(Field.encode!(Field.new(name: "leaf"))).name == "leaf", do: raise("Field codec") end,
+      fn -> unless Status.to_json!(Status.default()) == 0, do: raise("enum default") end,
+      fn -> unless Skir.RPC.TypeDescriptor.to_map(Value.type())["records"] |> length() == 2, do: raise("enum reflection") end]
+    tasks = for _ <- 1..4, operation <- operations do
+      Task.async(fn ->
+        send(parent, {:ready, self()})
+        receive do :go -> operation.() after 5_000 -> raise("start barrier timeout") end
+      end)
+    end
+    for %{pid: pid} <- tasks do
+      receive do {:ready, ^pid} -> :ok after 5_000 -> raise("worker readiness timeout") end
+    end
+    for %{pid: pid} <- tasks, do: send(pid, :go)
+    for task <- tasks, do: Task.await(task, 5_000)
 
   _ ->
     raise("expected cold-start scenario")

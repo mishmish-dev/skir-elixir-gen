@@ -102,7 +102,7 @@ const output = path.join(artifacts, 'elixir-vectors.json');
 await writeFile(input, JSON.stringify(vectors));
 run('mix', ['deps.get'], example);
 run('mix', ['compile','--warnings-as-errors'], example);
-run('mix', ['test'], example);
+run('mix', ['test', '--cover', '--warnings-as-errors'], example);
 run('mix', ['run', path.join(root,'scripts/interop.exs'), input, output], example);
 const results = JSON.parse(await readFile(output,'utf8'));
 assert.equal(results.length,vectors.length);

@@ -6,9 +6,10 @@ and Elixir 1.20.4 on pinned OTP 27.3.4.18, 28.5.0.7, and 29.1.1 releases.
 
 | Check | Observed result |
 |---|---|
-| Generator syntax and Node tests | 45 passed, no failures or skips. |
-| Runtime ExUnit/Plug tests | 60 passed. |
-| Generated-code ExUnit tests | 140 passed with real compiler output, including all 101 upstream golden cases. |
+| Generator syntax and Node tests | Four table-driven tests passed, no failures or skips. |
+| JavaScript coverage (Node/V8) | 99.32% lines, 95.89% branches, 100% functions across `src/*.js`. |
+| Combined native suite | 171 passed: 44 runtime/Plug tests and 127 generated-code/example tests, including all 101 upstream golden cases. |
+| Elixir coverage (Mix) | 98.89% lines across all handwritten runtime modules and `Example.RPC`; minimum 98% enforced. |
 | Raw RPC parity | 16 server cases and GET/POST client wire checks passed. |
 | Real Skir compiler and serialization interoperability | 209 vectors passed, including dense/readable JSON, canonical binary, recursion, unknown preservation, and long bytes. |
 
@@ -28,14 +29,41 @@ name. Numeric readers accept the golden representations while retaining range,
 complete-string parsing, and non-finite integer rejection checks. Native integer
 encoders still require integers.
 
-The example suite comprises 24 existing tests, 102 golden tests (101 cases plus
-corpus completeness), seven generated API tests, three live HTTP RPC tests, and
-four fresh-process initialization tests. Real schemas cover nested/repeated names,
-constructors, immutable updates, defaults, keyed-array indexes and duplicates,
+The suite keeps the upstream corpus and both executable interoperability oracles.
+Table-driven checks replace duplicate successful serialization examples and
+source-text assertions. The native tests run once in the full gate instead of
+running the example suite twice. Maintained test files, including helpers and
+the fresh-process probe, decreased from 17 to 14 and from 1,407 to 1,302 lines.
+The former baseline had 45 Node tests and 200 native tests; fewer named tests
+now cover more behavior, with native line coverage increasing from 87.76% to
+98.89% on the same module set.
+
+Added checks cover invalid compiler IR, naming collisions, constant escaping,
+all supported keyed-array key types, malformed/truncated wire frames, budgets,
+unknown data, invalid options, callback/transport failures, and chunked reads.
+Real schemas still exercise constructors, immutable updates, nested names,
 constants, and recursive enum/struct graphs. The live HTTP tests use a test-only
 Cowboy listener on an OS-assigned localhost port and OTP's `:httpc` client for
-GET/POST, metadata, errors, and reflection. Fresh BEAM processes touch recursive
-modules in different orders and concurrently.
+GET/POST, escaped strings, large bodies, metadata, errors, and reflection.
+Four fresh BEAM processes cover different first-access orders; the concurrent
+probe releases 24 workers at a readiness barrier and mixes defaults, codecs,
+and descriptors.
+
+The new escaped-GET test failed before the transport fix: OTP rejected JSON
+punctuation accepted by the TypeScript-compatible URL builder. The built-in
+`:httpc` adapter now escapes those query characters while preserving existing
+percent escapes and leaving the host/path intact. The public client URL contract
+and TypeScript wire parity check remain unchanged.
+
+Coverage uses Node's built-in V8 reporter and Mix's built-in `:cover` reporter,
+without an added coverage dependency. Mix instruments the local runtime
+alongside the example. Generated `Example.Protocol.*` modules are the only
+exclusion from the percentage; their behavior is tested through the compiler,
+golden corpus, and native API checks. Fresh BEAM subprocesses do not contribute
+to parent-process coverage. Elixir's line metric and V8's line/branch metrics
+measure different things; neither proves every input or failure path is tested.
+Uncovered defensive guards and application-start failures remain visible in
+the report. CI retains HTML coverage reports and reference vectors on every run.
 
 Cowboy is confined to the example's test environment. Hex currently reports two
 [cowlib advisories](https://hex.pm/packages/cowlib/advisories) even for the latest

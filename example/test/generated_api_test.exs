@@ -1,7 +1,7 @@
 defmodule Skir.GeneratedAPITest do
   use ExUnit.Case, async: true
   alias Example.Protocol.ApiSkir, as: API
-  alias API.{Container, Directory, Entry, Field, RecA, RecB, Status, Value}
+  alias API.{Container, Directory, Entry, Field, RecA, RecB, Status, Value, Keys, Keyed, KeywordFields}
   alias Example.Protocol.UserSkir.User
 
   test "keyword and map construction, defaults and updates serialize independently" do
@@ -64,6 +64,8 @@ defmodule Skir.GeneratedAPITest do
   end
 
   test "typed constants retain numeric precision, timestamp, bytes and enum payloads" do
+    assert API.small_const() == 1.0e-100
+    assert API.escaped_const() == "\#{not_elixir} \" \\ \n 🌍"
     assert API.enabled_const() == true
     assert API.max_id_const() == 9_223_372_036_854_775_807
     assert API.max_hash_const() == 18_446_744_073_709_551_615
@@ -74,4 +76,33 @@ defmodule Skir.GeneratedAPITest do
     assert API.infinity_const() == :infinity
     assert Value.to_json!(API.greeting_const()) == [3, [["hello", [1, "world"]]]]
   end
+  test "all supported key types, nested paths and enum kinds index decoded values" do
+    for {field, index, first, second, key1, key2} <- [
+      {:flag, :index_flag, false, true, false, true},
+      {:small, :index_small, -1, 2, -1, 2},
+      {:large, :index_large, 9_223_372_036_854_775_807, -1, 9_223_372_036_854_775_807, -1},
+      {:hash, :index_hash, 18_446_744_073_709_551_615, 0, 18_446_744_073_709_551_615, 0},
+      {:time, :index_time, -1, 1_703_984_028_000, -1, 1_703_984_028_000},
+      {:text, :index_text, "", "🌍", "", "🌍"},
+      {:status, :index_status, :offline, {:online, "here"}, :offline, :online},
+      {:entry, :index_nested, Entry.new(user: User.new(id: 1)), Entry.new(user: User.new(id: 2)), 1, 2}
+    ] do
+      a = Keys.new([{field, first}]); b = Keys.new([{field, second}])
+      array_field = if field == :entry, do: :nested, else: field
+      value = Keyed.new([{array_field, [b, a]}])
+      for decoded <- [Keyed.decode!(Keyed.encode!(value)), Keyed.decode_json!(Keyed.encode_json!(value, format: :readable))] do
+        assert apply(Keyed, index, [decoded]) == %{key1 => a, key2 => b}
+      end
+      assert apply(Keyed, index, [Keyed.default()]) == %{}
+      assert_raise ArgumentError, fn -> apply(Keyed, index, [Keyed.new([{array_field, [a, a]}])]) end
+    end
+  end
+
+  test "keyword field names and literal documentation survive real compilation" do
+    value = KeywordFields.new(user_id: 42, case: "case", end: "end", when: true)
+    assert KeywordFields.to_json!(value, format: :readable) == %{"user_id" => 42, "case" => "case", "end" => "end", "when" => true}
+    assert KeywordFields.decode!(KeywordFields.encode!(value)) == value
+    assert KeywordFields.schema().doc == "Literal \#{not_elixir}; quotes \" and backslashes \\ must survive generation."
+  end
+
 end

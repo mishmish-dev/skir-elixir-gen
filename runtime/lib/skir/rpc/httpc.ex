@@ -18,6 +18,16 @@ defmodule Skir.RPC.HTTPClient.Httpc do
         |> Enum.reject(fn {key, _} -> method == :post and String.downcase(key) == "content-type" end)
         |> Enum.map(fn {key, value} -> {String.to_charlist(key), String.to_charlist(value)} end)
 
+      # WHATWG query strings allow JSON punctuation that OTP's RFC URI parser
+      # rejects. Escape only the query, preserving percent escapes and IPv6 hosts.
+      uri = URI.parse(url)
+      url = if uri.query do
+        query = URI.encode(uri.query, &(URI.char_unreserved?(&1) or &1 in ~c"!$&'()*+,;=:@/?%"))
+        URI.to_string(%{uri | query: query})
+      else
+        url
+      end
+
       request =
         case method do
           :post -> {String.to_charlist(url), request_headers, ~c"text/plain; charset=utf-8", body}

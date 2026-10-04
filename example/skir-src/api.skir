@@ -58,3 +58,37 @@ const GREETING: Value = {
   kind: "object",
   value: [{ name: "hello", value: { kind: "text", value: "world" } }],
 };
+
+/// Literal #{not_elixir}; quotes " and backslashes \ must survive generation.
+struct KeywordFields {
+  user_id: int64;
+  case: string;
+  end: string;
+  when: bool;
+}
+
+struct Keys {
+  flag: bool;
+  small: int32;
+  large: int64;
+  hash: hash64;
+  time: timestamp;
+  text: string;
+  status: Status;
+  entry: Entry;
+}
+
+struct Keyed {
+  flag: [Keys|flag];
+  small: [Keys|small];
+  large: [Keys|large];
+  hash: [Keys|hash];
+  time: [Keys|time];
+  text: [Keys|text];
+  status: [Keys|status.kind];
+  nested: [Keys|entry.user.id];
+}
+
+const ESCAPED: string = "#{not_elixir} \" \\ \n 🌍";
+const SMALL: float64 = 0.0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001;
+method Echo(string): string = 23456;

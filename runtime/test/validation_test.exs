@@ -23,7 +23,7 @@ defmodule Skir.ValidationTest do
   end
 
   test "unknown options and invalid limits are rejected" do
-    for opts <- [[max_depth: 0], [max_bytes: -1], [unknown_fields: :invent], [surprise: 1]] do
+    for opts <- [[max_depth: 0], [max_bytes: -1], [max_nodes: 0], [max_collection_length: 0], [format: :dense], [unknown_fields: :invent], [surprise: 1], %{}, [1]] do
       assert {:error, %Skir.Error{reason: :invalid_options}} = Skir.encode(:int32, 1, opts)
     end
   end
@@ -32,10 +32,57 @@ defmodule Skir.ValidationTest do
     assert {:error, %Skir.Error{reason: :integer_range}} = Skir.from_json(:int32, "2147483648")
     assert {:error, %Skir.Error{reason: :integer_range}} = Skir.from_json(:timestamp, "8640000000000001")
     assert {:error, %Skir.Error{reason: :integer_range}} = Skir.from_json(:hash64, -1.5)
-    for value <- ["2x", " 2", "02", "1.5", String.duplicate("9", 100)] do
+    for value <- ["2x", " 2", "02", "1.5", "2\n", String.duplicate("9", 100)] do
       assert {:error, %Skir.Error{}} = Skir.from_json(:int32, value)
     end
     assert {:error, %Skir.Error{reason: :invalid_type}} = Skir.to_json(:int32, 2.0)
     assert {:error, %Skir.Error{reason: :invalid_type}} = Skir.decode(:int32, <<"skir", 0xf0, 0, 0, 0xc0, 0x7f>>)
   end
+
+  test "malformed numeric and wire inputs retain bounded structured failures" do
+    for {type, input, reason} <- [
+      {:int32, "2147483648", :integer_range}, {:int64, "-9223372036854775809", :integer_range},
+      {:bytes, "hex:zz", :invalid_bytes}, {:bytes, "not base64!", :invalid_bytes},
+      {:string, <<255>>, :invalid_utf8}, {:int32, :not_json, :invalid_json}
+    ] do
+      assert {:error, %Skir.Error{reason: ^reason}} = Skir.from_json(type, input)
+    end
+    huge = Integer.pow(2, 2048)
+    assert {:error, %Skir.Error{reason: :float_range}} = Skir.encode(:float64, huge)
+    assert Skir.to_json!(:timestamp, 8_640_000_000_000_000, format: :readable) == %{"unix_millis" => 8_640_000_000_000_000}
+    for {call, reason} <- [
+      {fn -> Skir.to_json({:array, :int32}, [1, 2], max_nodes: 2) end, :node_limit},
+      {fn -> Skir.decode({:array, :int32}, <<"skir", 0xf8, 1, 2>>, max_nodes: 2) end, :node_limit},
+      {fn -> Skir.decode(:string, <<"skir", 0xf3, 0xee>>) end, :invalid_length},
+      {fn -> Skir.decode(:string, <<"skir", 0xf3, 1, 255>>) end, :invalid_utf8},
+      {fn -> Skir.decode(:int32, <<"skir", 1, 2>>) end, :trailing_bytes},
+      {fn -> Skir.decode_json(:int32, "1", max_bytes: 1) end, nil},
+      {fn -> Skir.decode_json({:array, :int32}, "[]", max_bytes: 1) end, :byte_limit},
+      {fn -> Skir.decode_json(:string, ~s("[\\\"\\\\]"), max_depth: 1) end, nil},
+      {fn -> Skir.decode_json(:int32, "[[[0]]]", max_depth: 2) end, :depth_limit},
+      {fn -> Skir.from_json({:array, :int32}, [1, 2], max_collection_length: 1) end, :collection_limit},
+      {fn -> Skir.from_json(:int32, %{"one" => 1, "two" => 2}, max_collection_length: 1) end, :collection_limit},
+      {fn -> Skir.decode({:array, :int32}, <<"skir", 1>>) end, :invalid_type}
+    ] do
+      result = call.()
+      if reason, do: assert(match?({:error, %Skir.Error{reason: ^reason}}, result)), else: assert(match?({:ok, _}, result))
+    end
+    assert {:error, %Skir.Error{reason: :byte_limit}} = Skir.encode(:int32, 1, max_bytes: 4)
+    for type <- [:int32, :int64, :hash64], {input, want} <- [{false, 0}, {true, 1}] do
+      assert Skir.from_json!(type, input) == want
+    end
+  end
+  test "BEAM non-finite atoms map to canonical IEEE bits and JSON strings" do
+    for {type, marker, patterns} <- [
+      {:float32, 0xf0, [{:nan, "NaN", <<0x7fc00000::little-32>>}, {:infinity, "Infinity", <<0x7f800000::little-32>>}, {:neg_infinity, "-Infinity", <<0xff800000::little-32>>}]},
+      {:float64, 0xf1, [{:nan, "NaN", <<0x7ff8000000000000::little-64>>}, {:infinity, "Infinity", <<0x7ff0000000000000::little-64>>}, {:neg_infinity, "-Infinity", <<0xfff0000000000000::little-64>>}]}
+    ], {value, json, bits} <- patterns do
+      expected = "skir" <> <<marker>> <> bits
+      assert Skir.encode!(type, value) == expected
+      assert Skir.decode!(type, expected) == value
+      assert Skir.to_json!(type, value) == json
+      assert Skir.from_json!(type, json) == value
+    end
+  end
+
 end

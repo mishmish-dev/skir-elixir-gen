@@ -279,7 +279,7 @@ defmodule Skir.RPCTest do
 
     parent = self()
     transport = fn _, _, headers, _, _ -> send(parent, {:headers, headers}); {:ok, %{status: 200, headers: [], body: ~s([1])}} end
-    client = ServiceClient.new!("http://example.test/rpc", transport: transport, headers: [{"x-mode", "default"}])
+    client = ServiceClient.new!("http://example.test/rpc", transport: transport, headers: %{"x-mode" => "original"}) |> ServiceClient.with_default_header("X-Mode", "default")
     _ = ServiceClient.invoke(client, %Skir.Method{name: "N", number: 1, doc: "", request: :int32, response: {:array, :int32}}, 1, headers: [{"X-Mode", "call"}])
     assert_receive {:headers, headers}
     assert Enum.count(headers, fn {k, _} -> String.downcase(k) == "x-mode" end) == 1
@@ -330,6 +330,84 @@ defmodule Skir.RPCTest do
     assert {:ok, %User{id: 42}} = ServiceClient.invoke(client, method(), 42, http_method: :get)
     assert_receive {:request, :get, url, _headers, ""}
     assert String.starts_with?(url, "https://example.test/rpc?GetUser:12345::42")
+  end
+
+  test "service options change forwarding and escape Studio script URLs" do
+    echo = %{method() | request: {:record, User}}
+    for keep <- [false, true] do
+      svc = Service.new(keep_unrecognized_values: keep, can_send_unknown_error_message: true)
+        |> Service.add_method(echo, fn request, _ -> {:ok, request} end)
+      raw = Service.handle_request(svc, "GetUser:12345::[1,0,\"A\",\"future\"]")
+      assert Jason.decode!(raw.data) == if(keep, do: [1, 0, "A", "future"], else: [1, 0, "A"])
+    end
+    html = Service.new(studio_app_js_url: "https://example.test/a?x=\"<>&") |> Service.handle_request("studio")
+    assert html.data =~ "https://example.test/a?x=&quot;&lt;&gt;&amp;"
+    assert_raise ArgumentError, fn -> Service.new(unknown: true) end
+    assert_raise ArgumentError, fn -> Service.add_method(service(), method(), fn _, _ -> {:ok, 1} end) end
+    for invalid <- [%{method() | name: ""}, %{method() | number: -1}, %{method() | number: 0x100000000}, %{method() | doc: true}] do
+      assert_raise ArgumentError, fn -> Service.add_method(Service.new(), invalid, fn _, _ -> {:ok, 1} end) end
+    end
+    assert_raise ArgumentError, fn -> Skir.RPC.error(200) end
+  end
+
+  test "JSON dispatch rejects missing fields and invalid values while supporting readable colon responses" do
+    for {body, expected} <- [
+      {nil, "invalid request body"}, {" []", "bad request: expected JSON object"},
+      {~s({"request":1}), "bad request: missing 'method' field in JSON"},
+      {"Missing:::1", "bad request: method not found: Missing"}
+    ] do
+      assert %{status_code: 400, data: ^expected} = Service.handle_request(service(), body)
+    end
+    for body <- [~s({"method":12345,"request":7}), "GetUser:12345:readable:7"] do
+      assert %{status_code: 200, data: json} = Service.handle_request(service(), body)
+      assert Jason.decode!(json) == %{"id" => 7, "name" => "Alice"}
+    end
+    nested = String.duplicate("[", 65) <> "0" <> String.duplicate("]", 65)
+    for body <- [~s({"method":12345,"request":"bad"}), "{\"method\":12345,\"request\":" <> nested <> "}"] do
+      assert %{status_code: 400} = Service.handle_request(service(), body)
+    end
+  end
+
+  test "handler errors and failing callbacks cannot expose secrets or crash dispatch" do
+    for handler <- [fn _, _ -> raise Skir.RPC.ServiceError, status_code: 418 end,
+      fn _, _ -> throw(:secret) end, fn _, _ -> exit(:secret) end,
+      fn _, _ -> :invalid_return end, fn _, _ -> {:error, %Skir.RPC.ServiceError{status_code: 200, message: "secret"}} end] do
+      raw = Service.handle_request(service(handler), "GetUser:12345::1")
+      assert raw.status_code in [418, 500]
+      assert raw.data in ["I'm a teapot", "server error"]
+    end
+    assert_raise Skir.RPC.ServiceError, "I'm a teapot", fn -> raise Skir.RPC.ServiceError, status_code: 418 end
+    parent = self()
+    for callback <- [fn _ -> raise "secret" end, fn _ -> throw(:secret) end, fn _ -> exit(:secret) end] do
+      svc = service(fn _, _ -> raise "database secret" end)
+        |> Service.set_can_send_unknown_error_message(callback)
+        |> Service.set_error_logger(fn info -> send(parent, {:logged_unknown, info}); callback.(info) end)
+      assert %{status_code: 500, data: "server error"} = Service.handle_request(svc, "GetUser:12345::1", :metadata)
+      assert_receive {:logged_unknown, %{kind: :unknown, request_metadata: :metadata, method_name: "GetUser"}}
+    end
+  end
+
+  test "invalid client options, requests and transports return errors instead of success" do
+    for {url, opts} <- [{nil, []}, {"http://example.test", [headers: [1]]}, {"http://example.test", [headers: 1]}] do
+      assert {:error, _} = ServiceClient.new(url, opts)
+    end
+    assert_raise ArgumentError, fn -> ServiceClient.new!("invalid") end
+    transport = fn _, _, _, _, _ -> {:ok, %{status: 200, headers: [], body: "[]"}} end
+    client = ServiceClient.new!("http://example.test", transport: transport)
+    for {request, opts} <- [{"bad", []}, {1, [headers: [1]]}, {1, [http_method: :delete]}] do
+      assert {:error, %RpcError{status_code: 0}} = ServiceClient.invoke(client, method(), request, opts)
+    end
+    for transport <- [1, fn _, _, _, _, _ -> :malformed end, fn _, _, _, _, _ -> raise "failed" end,
+      fn _, _, _, _, _ -> throw(:failed) end, fn _, _, _, _, _ -> exit(:failed) end,
+      fn _, _, _, _, _ -> {:error, "network failed"} end] do
+      client = ServiceClient.new!("http://example.test", transport: transport)
+      assert {:error, %RpcError{status_code: 0, message: message}} = ServiceClient.invoke(client, method(), 1)
+      assert message =~ "Request failed:"
+      assert_raise RpcError, fn -> ServiceClient.invoke!(client, method(), 1) end
+    end
+    errors = fn _, _, _, _, _ -> {:ok, %{status: 500, headers: [nil, {"x-other", "x"}], body: "secret"}} end
+    client = ServiceClient.new!("http://example.test", transport: errors)
+    assert {:error, %RpcError{message: "HTTP status 500"}} = ServiceClient.invoke(client, method(), 1)
   end
 
 end

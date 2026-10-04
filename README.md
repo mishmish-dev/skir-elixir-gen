@@ -5,8 +5,10 @@ Elixir structs and tagged enum values. Neither the generated code nor its runtim
 uses Gleam, a port, a NIF, or a JavaScript process for serialization.
 
 **Verification status:** `npm run test:all` passes on Elixir 1.20.4 / OTP 29:
-45 Node tests, 60 runtime tests, 140 generated-code tests, 16 RPC server parity
-cases plus GET/POST client checks, and 209 serialization interoperability vectors.
+four table-driven Node tests, 171 native Elixir tests (runtime and generated APIs),
+16 RPC server parity cases plus GET/POST client checks, and 209 serialization
+interoperability vectors. Measured line coverage is 99.32% for JavaScript and
+98.89% for handwritten Elixir, with a 98% Elixir minimum enforced.
 CI runs the same gate on OTP 27.3.4.18, 28.5.0.7, and 29.1.1. See
 [VERIFICATION.md](VERIFICATION.md) for results and interoperability limitations.
 
@@ -289,8 +291,9 @@ calendar range, readable output contains `unix_millis` without `formatted`.
 ## Tests
 
 ```sh
-# Runs without downloading any dependencies; exercises the generator core only.
+# Requires npm dependencies; exercises the generator and plugin configuration.
 npm test
+npm run test:coverage
 npm run check
 npm run generate:fixtures
 
@@ -312,7 +315,7 @@ npm run test:all
 `generate:fixtures` intentionally uses a hand-built resolved-IR fixture, not a
 Skir parser. Both `test:elixir` and the integration command regenerate example outputs using
 the real compiler. Integration compiles the native modules with warnings-as-errors, runs the
-example tests, and exchanges JSON and byte-for-byte binary vectors with the
+runtime and example tests together once, and exchanges JSON and byte-for-byte binary vectors with the
 upstream TypeScript runtime. It includes deterministic generated cases and
 unknown-data preservation. A missing tool is a failure, never a skipped success.
 It writes `.artifacts/reference-vectors.json` and `.artifacts/elixir-vectors.json`.
@@ -329,8 +332,19 @@ Additional real schemas test constructors, updates, defaults, nested names,
 keyed arrays, constants, and recursive types. A test-only Cowboy server on an
 OS-assigned localhost port exercises generated GET/POST clients through OTP
 `:httpc`, errors, metadata, and reflection. Four fresh BEAM processes test
-recursive defaults, codecs, reflection, and concurrent initialization. These
-checks run through `test:elixir`, `test:all`, and every CI matrix entry.
+recursive defaults, codecs, reflection, and concurrent initialization. The concurrent scenario
+releases workers together after a readiness barrier and mixes first access to
+defaults, codecs, and descriptors. These checks run through `test:elixir`,
+`test:all`, and every CI matrix entry.
+
+The full gate measures JavaScript coverage with Node and Elixir line coverage
+with Mix. Only generated `Example.Protocol.*` modules are excluded from the Mix
+percentage; all handwritten runtime modules and the example RPC service are
+included. Generated APIs are checked by the golden and native API tests. Fresh
+BEAM subprocesses are tested but do not contribute to the parent coverage report.
+CI uploads HTML coverage reports and reference vectors for every matrix entry.
+`test:runtime` remains available for focused runtime checks; the full gate runs
+those tests in the combined example suite to avoid repeating them.
 
 ## Current boundaries / release gate
 

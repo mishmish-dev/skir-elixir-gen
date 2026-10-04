@@ -36,8 +36,8 @@ jobs:
           mix local.rebar --force
       - name: Generator, native runtime, and upstream interoperability
         run: npm run test:all
-      - name: Preserve reference vectors on failure
-        if: failure()
+      - name: Preserve coverage and reference vectors
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: interop-otp-${{ matrix.otp-version }}-elixir-${{ matrix.elixir-version }}

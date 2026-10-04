@@ -25,14 +25,15 @@
   "scripts": {
     "test": "node --test test/*.test.mjs",
     "generate:fixtures": "node scripts/generate-fixtures.mjs",
-    "test:elixir": "npm run generate && cd example && mix deps.get && mix test",
+    "test:elixir": "npm run generate && cd example && mix deps.get && mix test --cover --warnings-as-errors",
     "test:integration": "node scripts/integration.mjs",
     "check": "node --check src/generator.js && node --check src/naming.js && node --check src/index.js",
     "configure": "node scripts/configure-example.mjs",
     "generate": "npm run configure && cd example && skir gen",
     "test:runtime": "cd runtime && mix deps.get && mix test",
-    "test:all": "npm run check && npm test && npm run test:runtime && npm run test:elixir && npm run test:rpc-parity && npm run test:integration",
-    "test:rpc-parity": "node scripts/rpc-parity.mjs"
+    "test:all": "npm run check && npm run test:coverage && npm run test:integration && npm run test:rpc-parity",
+    "test:rpc-parity": "node scripts/rpc-parity.mjs",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=src/*.js test/*.test.mjs"
   },
   "dependencies": {
     "skir-internal": "0.2.21",
