@@ -45,25 +45,113 @@ not for running the generated Elixir code. Skir manages directories named
 generators in the same configuration so they share the same schemas.
 
 `namespace` is the only generator option. It defaults to `Skir.Generated` and
-must be an Elixir module namespace. For `accounts/user.skir` defining `User`, the
-module is `MyApp.Protocol.Accounts.UserSkir.User`. A nested `User.Pet` becomes
-`MyApp.Protocol.Accounts.UserSkir.User.Pet`. Constants and methods are functions
-on the source-file module, for example `UserSkir.alice_const/0` and
-`UserSkir.get_user_method/0`.
+must be an Elixir module namespace.
 
 ## Elixir generated-code guide
 
 The examples below use [the example schema](https://github.com/mishmish-dev/skir-elixir-gen/blob/main/example/skir-src/user.skir) with
 `namespace: Example.Protocol`. Follow the same pattern with your own namespace.
 
-### Structs, enums, and serialization
+### Referring to generated symbols
+
+Each source file has a module for its constants and RPC helpers, with nested
+modules for its records:
 
 ```elixir
+alias Example.Protocol.UserSkir
 alias Example.Protocol.UserSkir.{User, Event}
 
-user = User.new(id: 42, name: "Alice")
-%User{name: "Alice"} = user
+# A nested User.Pet record has its own module.
+alias Example.Protocol.UserSkir.User.Pet
+```
 
+For `accounts/user.skir` and `namespace: MyApp.Protocol`, the record module is
+`MyApp.Protocol.Accounts.UserSkir.User`. A nested `User.Pet` becomes
+`MyApp.Protocol.Accounts.UserSkir.User.Pet`. Constants and methods are functions
+on the source-file module, for example `UserSkir.alice_const/0` and
+`UserSkir.get_user_method/0`.
+
+GitHub schema dependencies use Skir's normal [`dependencies` configuration](https://skir.build/docs/dependencies),
+including transitive imports. An import from `@acme/shared-models/accounts/user.skir`
+generates `MyApp.Protocol.External.Acme.SharedModels.Accounts.UserSkir.User` in
+`external/acme/shared_models/accounts/user_skir.ex`. Numeric or punctuation-only
+owner/repository names gain an `N` prefix in Elixir module names. The original
+import path remains in reflection IDs. Names that normalize to the same module
+or output path are rejected, including collisions with local `external/...` schemas.
+
+### Struct types
+
+Skir structs become native Elixir structs. `new/1` accepts a map or keyword list;
+omitted fields use schema defaults.
+
+```elixir
+user = User.new(id: 42, name: "Alice")
+%User{id: 42, name: "Alice"} = user
+
+%User{id: 0, name: ""} = User.default()
+from_map = User.new(%{id: 43, name: "Bob"})
+```
+
+`new/1` rejects unknown attributes. Field values are validated when serializing;
+typespecs do not enforce them at construction time.
+
+#### Creating modified copies
+
+Structs are immutable. Use Elixir's update syntax to copy a value with changes:
+
+```elixir
+updated = %{user | name: "Bob"}
+"Alice" = user.name
+"Bob" = updated.name
+```
+
+#### Optional and array fields
+
+Optional fields use `nil` or the underlying value. Arrays use lists, including
+lists of nested generated records:
+
+```elixir
+nil = User.default().nickname
+family = User.new(nickname: "Al", pets: [Pet.new(name: "Mo")])
+"Al" = family.nickname
+[%Pet{name: "Mo"}] = family.pets
+```
+
+Keyed arrays also generate `index_<field>/1` helpers. These return a map and raise
+`ArgumentError` on duplicate keys. See [native API examples](https://github.com/mishmish-dev/skir-elixir-gen/blob/main/example/test/generated_api_test.exs)
+for nested key paths and enum-kind indexes.
+
+### Enum types
+
+Constant variants are atoms; variants carrying a value are tuples. Every enum
+also has an implicit `:unknown` default:
+
+```elixir
+connected = :connected
+message = {:message, "Hello"}
+event = {:user_created, user}
+:unknown = Event.default()
+```
+
+Use ordinary Elixir pattern matching:
+
+```elixir
+case event do
+  :connected -> "Connected"
+  {:user_created, %User{name: name}} -> name
+  {:message, text} -> text
+  :unknown -> "Unknown event"
+  {:unknown, _metadata} -> "Preserved future event"
+end
+```
+
+The tuple form of an unknown variant is used when explicitly preserving future
+values. See the [runtime codec guide](https://github.com/mishmish-dev/skir-elixir-client/blob/main/docs/CODECS.md)
+for schema evolution and unknown-field policies.
+
+### Serialization
+
+```elixir
 # JSON terms and JSON strings are separate APIs.
 [42, 0, "Alice"] = User.to_json!(user)
 {:ok, json} = User.encode_json(user)
@@ -74,7 +162,6 @@ user = User.new(id: 42, name: "Alice")
 {:ok, ^user} = User.decode(binary)
 
 # Pure Elixir sum types: atoms for constants, tuples for payloads.
-event = {:user_created, user}
 {:ok, event_binary} = Event.encode(event)
 {:ok, {:user_created, %User{id: 42}}} = Event.decode(event_binary)
 
@@ -84,6 +171,38 @@ event = {:user_created, user}
 
 The zero between `id` and `name` is the example schema's permanently removed
 field 1. It is not an inferred field position.
+
+
+Every generated record module has `default/0`, `type/0`,
+and these function pairs, each accepting keyword options:
+
+```elixir
+User.to_json(value)       # {:ok, JSON-compatible Elixir term}
+User.from_json(term)      # {:ok, %User{}}
+User.encode_json(value)   # {:ok, UTF-8 JSON binary}
+User.decode_json(json)    # {:ok, %User{}}
+User.encode(value)        # {:ok, framed Skir binary}
+User.decode(binary)      # {:ok, %User{}}; JSON bytes are also accepted
+# The same names ending in ! return the value or raise Skir.Error.
+```
+
+Non-bang serialization functions return `{:error, %Skir.Error{reason: atom,
+path: [...], message: string}}` on validated input failures. Unexpected programming
+errors are not swallowed. Struct modules additionally expose `new/1`.
+
+See the [runtime codec guide](https://github.com/mishmish-dev/skir-elixir-client/blob/main/docs/CODECS.md)
+for primitive mappings, recursive defaults, encoding rules and resource limits,
+and the [runtime API reference](https://hexdocs.pm/skir_elixir_client/Skir.html)
+for serializing primitive and composite type handles directly.
+
+### Constants
+
+Constants are zero-arity functions on the source-file module:
+
+```elixir
+alias Example.Protocol.UserSkir
+alice = UserSkir.alice_const()
+```
 
 ### SkirRPC services
 
@@ -113,55 +232,6 @@ SkirRPC HTTP wire format, and a pluggable client transport are implemented. See
 [the client RPC guide](https://hexdocs.pm/skir_elixir_client/skirrpc.html) for the complete API and
 [the client parity audit](https://hexdocs.pm/skir_elixir_client/skirrpc_parity.html) for the official-runtime parity audit.
 
-### Generated function reference
-
-Every generated record module has `new/1` (structs only), `default/0`, `type/0`,
-and these function pairs, each accepting keyword options:
-
-```elixir
-User.to_json(value)       # {:ok, JSON-compatible Elixir term}
-User.from_json(term)      # {:ok, %User{}}
-User.encode_json(value)   # {:ok, UTF-8 JSON binary}
-User.decode_json(json)    # {:ok, %User{}}
-User.encode(value)        # {:ok, framed Skir binary}
-User.decode(binary)      # {:ok, %User{}}; JSON bytes are also accepted
-# The same names ending in ! return the value or raise Skir.Error.
-```
-
-Non-bang serialization functions return `{:error, %Skir.Error{reason: atom,
-path: [...], message: string}}` on validated input failures. Unexpected programming
-errors are not swallowed. `new/1` rejects unknown attributes but validates field
-values only when serializing; typespecs are not runtime enforcement.
-
-### Defaults and modified copies
-
-```elixir
-%User{id: 0, name: ""} = User.default()
-updated = %{user | name: "Bob"}
-```
-
-Structs are immutable Elixir values. `new/1` accepts a map or keyword list;
-omitted fields use schema defaults. Constant enum variants are atoms and payload
-variants are tuples, so use ordinary Elixir pattern matching:
-
-```elixir
-case event do
-  {:user_created, %User{name: name}} -> name
-  :unknown -> "Unknown event"
-  {:unknown, _metadata} -> "Future event"
-  _other -> "Another event"
-end
-```
-
-### Constants
-
-Constants are zero-arity functions on the source-file module:
-
-```elixir
-alias Example.Protocol.UserSkir
-alice = UserSkir.alice_const()
-```
-
 ### Reflection
 
 Inspect any generated type with `Skir.RPC.TypeDescriptor`:
@@ -175,146 +245,18 @@ Descriptors include nested types, field numbers, enum variants, documentation,
 and removed slots. `User.type/0` is the public type handle; `schema/0` is internal
 codec metadata. See the [runtime API reference](https://hexdocs.pm/skir_elixir_client).
 
-## Data model and encoding
+## Compatibility and documentation
 
-| Skir type                  | Native value                                                                   |
-| -------------------------- | ------------------------------------------------------------------------------ |
-| `struct`                   | Generated `%Module{}` with declared fields and internal unknown-field metadata |
-| Constant enum variant      | Atom such as `:connected`                                                      |
-| Payload enum variant       | Tuple such as `{:user_created, user}`                                          |
-| Implicit enum unknown      | `:unknown`                                                                     |
-| Preserved future variant   | `{:unknown, %Skir.Unknown{...}}`                                               |
-| Optional                   | `nil` or the underlying value                                                  |
-| Array / keyed array        | List; keyed fields also get `index_<field>/1`                                  |
-| `bool`                     | Boolean                                                                        |
-| `int32`, `int64`, `hash64` | Range-checked integer                                                          |
-| `float32`, `float64`       | Finite number, `:nan`, `:infinity`, or `:neg_infinity`                         |
-| `string` / `bytes`         | UTF-8 binary / arbitrary binary                                                |
-| `timestamp`                | Integer Unix milliseconds, within ±8,640,000,000,000,000                       |
+This unofficial backend targets Skir schemas, serialization and the SkirRPC wire
+contract. It supports local and GitHub dependency imports. Streaming is outside
+the current SkirRPC protocol. Generator and runtime versions are independent;
+the example and CI pin Hex 0.2.0. Review the [security findings](docs/SECURITY_REVIEW.md)
+before production adoption: two RPC resource-limit findings remain open in that
+pinned runtime.
 
-Dense JSON and binary use the compiler's field numbers, retain removed-slot
-positions, and omit trailing defaults. The binary API prefixes values with ASCII
-`skir`. Large 64-bit JSON integers use decimal strings outside JavaScript's exact
-integer range. Bytes use base64 in dense JSON and `hex:` in readable JSON.
-Finite float32 values are rounded when encoded to binary, not when encoded to
-JSON. Non-finite BEAM values are represented explicitly as atoms.
-
-Nested struct defaults are emitted as literal struct-shaped maps, avoiding
-compile-order cycles between generated modules. Unavoidable hard-recursive
-defaults terminate in `:skir_default`. The encoder accepts that sentinel only in
-struct positions. Explicit default-only recursive chains may canonicalize back
-to the finite default; do not rely on their materialized depth surviving a
-round trip. Prefer optional links for ordinary application trees.
-
-Keyed-array helpers build a map and **raise `ArgumentError` on duplicate keys**.
-Keys can follow nested fields and enum `.kind`. They do not automatically expand
-a hard-recursive `:skir_default` sentinel in a key path.
-
-## Evolution and unknown fields
-
-Decoding **discards unknown data by default**, matching the conservative upstream
-policy. Preserve it explicitly only when the source is trusted:
-
-```elixir
-old_reader = User.from_json!(newer_dense_json, unknown_fields: :preserve)
-updated = %{old_reader | name: "Bob"}
-
-# Retained fields survive same-format encoding without repeating the option.
-forwarded = User.to_json!(updated)
-
-# Dense unknown values have no type information for conversion to binary.
-{:error, %Skir.Error{reason: :unknown_format}} = User.encode(updated)
-
-# Explicitly authorize lossy conversion when that is appropriate.
-binary_without_unknowns = User.encode!(updated, unknown_fields: :discard)
-```
-
-Unknown binary field values retain their exact original bytes. Unknown values
-are validated before being emitted. Removed fields/variants are discarded rather
-than treated as newly unknown fields. Readable unknown field names can be
-preserved, but readable JSON is not safe across field renames.
-
-Constant-to-payload enum evolution is handled in both directions: reading the
-old constant with the new schema supplies a default payload; reading the new
-payload with the old constant schema ignores the payload. No atom is created from
-an incoming enum name or JSON field name.
-
-Unknown preservation can otherwise allow an untrusted client to smuggle a future
-field through an older service. Do not enable it globally at a public API boundary.
-
-## Validation and limits
-
-Serialization options:
-
-```elixir
-[
-  max_bytes: 4_194_304,
-  max_depth: 64,
-  max_collection_length: 100_000,
-  max_nodes: 200_000,
-  unknown_fields: :discard  # decode default; encode preserves already-retained data
-]
-```
-
-JSON encoding additionally accepts `format: :dense` (default) or `:readable`.
-Binary APIs accept only `format: :binary`. Unknown options and invalid limits
-are errors.
-
-Wire decoders bound input bytes, nesting, collection lengths, and aggregate
-parsed nodes, and reject trailing binary bytes. JSON nesting is pre-scanned
-before built-in `JSON` builds a tree. UTF-8, base64, numbers and payload shapes
-are checked.
-These are defensive measures, **not a completed security audit or a substitute
-for HTTP body/time limits**. Native `to_json/3` receives an already-allocated
-application tree; its byte limits on terms are not a wire-size guarantee for the
-whole returned tree. Apply transport limits before parsing untrusted requests.
-
-This runtime intentionally rejects some malformed/out-of-range values that
-upstream implementations may coerce or clamp. It does not claim identical error
-permissiveness on invalid inputs. For very large valid timestamps beyond Elixir's
-calendar range, readable output contains `unix_millis` without `formatted`.
-
-## Development
-
-See [development and tests](README.dev.md), [verification scope](VERIFICATION.md),
-and [release instructions](docs/RELEASING.md). The example and CI pin the runtime
-exactly to Hex 0.2.0; generator and runtime versions are independent.
-
-## Current boundaries / release gate
-
-This is an initial native implementation, not an officially supported Skir
-backend. Local imports, nested records, optional/array types, constants and method
-metadata are implemented. GitHub dependency module paths beginning with `@` are
-currently rejected; vendor those schemas as local paths before generation.
-
-Native SkirRPC transport, generated client/server helpers, Phoenix/Plug routing,
-Studio, and reflection are included. The SkirRPC surface has been source-audited
-against the official TypeScript, Dart, and Gleam runtimes; where TypeScript and
-Dart agree, the runtime treats that behavior as the compatibility baseline. The
-executable TypeScript ↔ Elixir raw-response oracle runs in the client repository.
-
-Not included: streaming RPC (not part of the current SkirRPC wire protocol), OTP
-release benchmarking, a live Dart ↔ Phoenix interoperability run, or independent
-security/fuzz review. One current upstream TypeScript `list` anomaly writes the
-method name into the `number` field; Elixir intentionally follows the numeric-ID
-behavior used by Dart and Gleam instead. See the [client RPC parity guide](https://hexdocs.pm/skir_elixir_client/skirrpc_parity.html).
-
-Before adopting it in production, run the complete test gate on the intended
-Elixir/OTP versions, add your schemas and Dart-produced vectors, review the native
-codec implementation, and fuzz malformed inputs. Commit `package-lock.json` and
-the Mix lockfiles before releasing a reproducible production baseline.
-The generator is published to npm as `skir-elixir-gen`; the runtime is published
-to Hex as `skir_elixir_client`.
-
-## Upstream references used
-
-- Skir compiler plugin interface: https://github.com/gepheum/skir-internal/blob/main/src/types.ts
-- Configuration and setup: https://skir.build/docs/setup
-- Language and type mappings: https://skir.build/docs/language-reference
-- Wire format: https://skir.build/docs/serialization
-- Evolution and trust boundary: https://skir.build/docs/schema-evolution
-- TypeScript reference runtime: https://github.com/gepheum/skir-typescript-client/blob/main/src/skir-client.ts
-- Gleam reference wire behavior: https://github.com/gepheum/skir-gleam-client/tree/main/src/skir_client/internal
-
-These are references for the implementation, not claims of upstream endorsement.
-The new generator and native Elixir runtime are licensed under MIT.
+- [Runtime codecs and schema evolution](https://github.com/mishmish-dev/skir-elixir-client/blob/main/docs/CODECS.md)
+- [Runtime API reference](https://hexdocs.pm/skir_elixir_client)
+- [Development and tests](README.dev.md)
+- [Verification scope](VERIFICATION.md)
+- [Release instructions](docs/RELEASING.md)
+- [Security review](docs/SECURITY_REVIEW.md)

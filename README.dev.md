@@ -22,13 +22,18 @@ by their respective repositories. See [release instructions](docs/RELEASING.md).
 
 - `src/`: npm plugin and generator core.
 - `example/`: schemas, generated bindings and 127 binding/integration tests.
-- `test/`: four table-driven Node generator tests.
+- `test/`: five Node generator tests, including real-compiler dependency imports.
 - `fixtures/upstream/`: pinned upstream golden corpus provenance and license.
 - `scripts/integration.mjs`: real compiler and 209 TypeScript interoperability vectors.
-- `scripts/package-smoke.mjs`: fresh consumer of the actual npm archive.
+- `scripts/package-smoke.mjs`: fresh consumer of the actual npm archive, including
+  cached transitive schema dependencies and native Elixir execution.
+- `scripts/fuzz.exs`: deterministic bounded malformed-input mutation checks.
+- `scripts/benchmark-release.mjs`: codec measurements inside an actual OTP release.
 
 Runtime unit tests and the raw RPC oracle belong to the client repository.
 See [VERIFICATION.md](VERIFICATION.md) for coverage scope and compatibility limits.
+Current release and security guidance lives in `docs/RELEASING.md` and
+`docs/SECURITY_REVIEW.md`.
 
 ## Run the example
 
@@ -67,6 +72,12 @@ npm run test:elixir
 # Requires npm dependencies, Elixir and Hex. Uses real .skir input, not the IR fixture.
 npm run test:integration
 
+# Deterministic mutations of generated native JSON/binary/term decoders.
+npm run test:fuzz
+
+# Build an OTP release and record five-sample median codec throughput.
+npm run test:benchmark
+
 # Full gate, used by the included CI definition.
 npm run test:all
 ```
@@ -103,3 +114,18 @@ instrumented here and its unit tests are not included in this suite. Generated
 bindings are checked by the golden and native API tests. Fresh BEAM subprocesses
 do not contribute to the parent coverage report. CI uploads coverage and
 reference vectors for every matrix entry.
+
+Malformed-input checks use a fixed seed, six generated schemas, both unknown-field
+policies and explicit byte/depth/collection/node limits. Every case is decoded twice
+inside a worker with a timeout; unexpected exceptions, unstable results and hangs
+fail the command. Some mutations are valid and may be accepted. The summary is
+written to `.artifacts/malformed-input-checks.json`. This is a regression corpus,
+not exhaustive fuzzing or a security certification.
+
+The benchmark builds `MIX_ENV=prod mix release` and runs the release executable's
+`eval` command, without Mix in the measurement process. It verifies codec round
+trips, warms each operation, and records five samples of 2,000 operations for
+binary and JSON encoding/decoding across four schemas. Median throughput and
+environment details are saved to `.artifacts/release-benchmark.json`. CI runs it
+after the full test gate without imposing a hardware-dependent timing threshold.
+See [security review findings](docs/SECURITY_REVIEW.md) before production adoption.

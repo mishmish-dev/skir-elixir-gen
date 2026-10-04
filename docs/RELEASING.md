@@ -23,7 +23,11 @@ CLI. It requires no npm publishing token or repository secret. See
 1. Set `package.json` version and update `package-lock.json`. When changing the
    compatible runtime baseline, update the exact dependency in `example/mix.exs`
    and regenerate `example/mix.lock`.
-2. Run `npm ci --ignore-scripts`, initialize Hex/Rebar and run `npm run test:all`.
+2. Run `npm ci --ignore-scripts`, initialize Hex/Rebar and run `npm run test:all`
+   and `npm run test:benchmark`. Review the malformed-input and OTP release
+   benchmark reports under `.artifacts/` and the current [security findings](SECURITY_REVIEW.md).
+   Generator release checks do not resolve open findings in the pinned runtime;
+   production adoption needs the runtime fixes or reviewed deployment mitigations.
 3. Push the commit to `main`. The Release workflow compares the version with
    the latest release tag and publishes a changed version after the full CI gate.
 4. After npm publication succeeds, CI creates `vX.Y.Z` and a GitHub release
@@ -40,6 +44,21 @@ repository, workflow filename and direct-publish permission, then rerun the
 failed job. If npm succeeds but
 GitHub release creation fails, rerun only that job so the package is not uploaded
 again.
+
+## Production adoption
+
+Run the full gate and release benchmark with your application's schemas on the
+Elixir/OTP versions you intend to deploy. Reference serialization checks target
+the shared wire format; a specific client language is not a release requirement.
+Benchmark results describe the measured machine and codec workloads, not a
+production throughput guarantee. See [verification scope](../VERIFICATION.md)
+and the [security review](SECURITY_REVIEW.md) for limits and open runtime findings.
+
+`package-lock.json` and `example/mix.lock` are tracked. Keep them synchronized
+with dependency changes, and install with `npm ci --ignore-scripts` and
+`mix deps.get --check-locked`. The generator and runtime publish independently;
+adopting runtime fixes requires updating the example's exact Hex dependency and
+lockfile and rerunning the generator gate.
 
 ## Initial release
 

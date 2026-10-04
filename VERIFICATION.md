@@ -6,12 +6,15 @@ The split preserves each existing test in exactly one repository.
 
 | Check | Generator | Client |
 |---|---|---|
-| Generator unit tests | Four table-driven Node tests | — |
+| Generator unit tests | Five Node tests, including real-compiler GitHub/transitive imports | — |
 | Generated binding tests | 127 ExUnit tests, including all 101 upstream goldens | — |
 | Serialization interoperability | 209 vectors through the real compiler and TypeScript reference | — |
 | Runtime unit tests | — | 44 ExUnit tests |
 | Raw RPC oracle | — | 16 server cases plus GET/POST client wire comparisons |
-| Distribution consumer | npm archive installed in a fresh compiler project | Hex archive installed in a fresh Mix project |
+| Distribution consumer | npm archive installed in a fresh compiler project; transitive imports executed in Elixir | Hex archive installed in a fresh Mix project |
+| Malformed-input checks | Deterministic bounded mutations across six generated schemas, three decoders and both unknown-field policies | — |
+| OTP release benchmark | Binary/JSON codec medians inside the release executable; environment recorded | — |
+| Security review | Independent agent source review and targeted runtime probes; findings in docs/SECURITY_REVIEW.md | Runtime fixes require a separate release |
 | CI | Node 20; Elixir 1.18.4 / OTP 27 and Elixir 1.20.4 / OTP 27/28/29 | Same matrix, independently |
 
 Generator `npm run test:all` reports JavaScript coverage. Mix coverage measures
@@ -30,5 +33,27 @@ initial buffer are checked against its decoder and the wire specification;
 RPC list method numbers are normalized only in the client-owned oracle.
 Float32 values normalize through binary to make rounding explicit.
 
-GitHub schema import paths starting with `@` remain unsupported. No live
-Dart/Phoenix deployment or independent security/fuzz audit is claimed.
+GitHub schema import paths starting with `@` are supported; reflection preserves
+the original paths. The archive gate exercises compiler-cached direct/transitive
+dependencies without requiring live GitHub downloads. Client-language-specific
+deployments are not a generator release requirement. The existing reference
+serializer is an oracle for the shared wire format.
+
+Deterministic mutation checks and an independent agent review are included;
+third-party certification and exhaustive fuzzing are not claimed. The review's
+two runtime RPC resource-limit findings remain open in Hex 0.2.0. See
+[the review](docs/SECURITY_REVIEW.md) for reproduction and adoption requirements.
+
+## Upstream references
+
+
+- Skir compiler plugin interface: https://github.com/gepheum/skir-internal/blob/main/src/types.ts
+- Configuration and setup: https://skir.build/docs/setup
+- Language and type mappings: https://skir.build/docs/language-reference
+- Wire format: https://skir.build/docs/serialization
+- Evolution and trust boundary: https://skir.build/docs/schema-evolution
+- TypeScript reference runtime: https://github.com/gepheum/skir-typescript-client/blob/main/src/skir-client.ts
+- Gleam reference wire behavior: https://github.com/gepheum/skir-gleam-client/tree/main/src/skir_client/internal
+
+These are references for the implementation, not claims of upstream endorsement.
+The new generator and native Elixir runtime are licensed under MIT.
