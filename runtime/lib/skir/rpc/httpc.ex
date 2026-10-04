@@ -22,7 +22,7 @@ defmodule Skir.RPC.HTTPClient.Httpc do
       # rejects. Escape only the query, preserving percent escapes and IPv6 hosts.
       uri = URI.parse(url)
       url = if uri.query do
-        query = URI.encode(uri.query, &(URI.char_unreserved?(&1) or &1 in ~c"!$&'()*+,;=:@/?%"))
+        query = URI.encode(uri.query, &(URI.char_unreserved?(&1) or Enum.member?(~c"!$&'()*+,;=:@/?%", &1)))
         URI.to_string(Map.put(uri, :query, query))
       else
         url

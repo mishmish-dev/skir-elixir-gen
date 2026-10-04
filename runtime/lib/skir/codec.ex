@@ -167,7 +167,8 @@ defmodule Skir.Codec do
     {tag, payload, has_payload, actual_format} = enum_parts(input, ctx)
     ctx = %{ctx | format: actual_format}
     cond do
-      tag in [0, "unknown", "UNKNOWN"] and not has_payload -> :unknown
+      # Keep membership out of the inline boolean expression for OTP 27 cover.
+      Enum.member?([0, "unknown", "UNKNOWN"], tag) and not has_payload -> :unknown
       is_integer(tag) and tag in schema.removed -> :unknown
       true ->
         field = Enum.find(schema.fields, fn f -> f.number == tag or (is_binary(tag) and String.downcase(f.json_name) == String.downcase(tag)) end)
