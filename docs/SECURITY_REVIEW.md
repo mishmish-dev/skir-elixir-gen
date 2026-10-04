@@ -127,24 +127,17 @@ forwarding boundaries.
 
 ## Locked HTTP test dependency advisories
 
-The example locks `cowlib` 2.20.0 through the test-only `plug_cowboy` dependency.
-It falls within the published affected ranges for
+The example now uses test-only Bandit 1.12.5. Its lockfile no longer includes
+`plug_cowboy`, Cowboy, cowlib, or Ranch. The existing `Skir.RPC.Plug` handler
+runs under Bandit for the HTTP integration tests.
+
+The original review assessed cowlib 2.20.0 for
 [CVE-2026-43966](https://cna.erlef.org/cves/CVE-2026-43966.html), a structured-header
 encoder permitting response splitting, and
 [CVE-2026-43969](https://cna.erlef.org/cves/CVE-2026-43969.html), a client cookie
-encoder permitting cookie/header injection. These advisories require hostile
-values to reach their respective encoder functions; they are not demonstrated
-exploits of the Skir adapter.
-
-Source inspection found no calls to those encoders in this generator, its example
-application, or its tests. Runtime 0.2.1's HTTP client uses bounded OTP TCP/TLS
-reads and does not use the affected cookie encoder. The locked server is Cowboy
-2.19.0, which includes the outgoing CR/LF header rejection mitigation
-described by the 43966 advisory for Cowboy 2.16.0 onward. Its source defaults
-`invalid_response_headers` to `error_terminate`; retain that protection in
-deployments. Do not treat this configuration-specific assessment as a general
-clearance of cowlib. Recheck the advisories and adopt an upstream fixed release
-when available; the review did not modify the reproducible lockfile.
+encoder permitting cookie/header injection. That dependency-specific assessment
+no longer applies to this example's locked test server. This migration does not
+constitute a security review of Bandit or its dependencies.
 
 ## Remaining limits
 

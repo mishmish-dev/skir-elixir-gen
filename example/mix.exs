@@ -14,7 +14,7 @@ defmodule SkirExample.MixProject do
       ],
       deps: [
         {:skir_elixir_client, "~> 0.2.1"},
-        {:plug_cowboy, "~> 2.9", only: :test}
+        {:bandit, "~> 1.12", only: :test}
       ]
     ]
   end

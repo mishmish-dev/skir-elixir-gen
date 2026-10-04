@@ -22,16 +22,19 @@ defmodule Skir.HTTPRPCTest do
     service = service |> ApiSkir.add_echo(fn value, _ -> {:ok, value} end)
     ref = make_ref()
 
-    start_supervised!(
-      Plug.Cowboy.child_spec(
-        scheme: :http,
-        plug: {Skir.RPC.Plug, [service: service]},
-        options: [ref: ref, ip: {127, 0, 0, 1}, port: 0]
+    server =
+      start_supervised!(
+        Bandit.child_spec(
+          scheme: :http,
+          plug: {Skir.RPC.Plug, [service: service]},
+          ip: {127, 0, 0, 1},
+          port: 0
+        )
+        |> Map.put(:id, ref)
       )
-      |> Map.put(:id, ref)
-    )
 
-    url = "http://127.0.0.1:#{:ranch.get_port(ref)}/rpc"
+    {:ok, {_, port}} = ThousandIsland.listener_info(server)
+    url = "http://127.0.0.1:#{port}/rpc"
     {:ok, client: ServiceClient.new!(url), url: url, ref: ref}
   end
 

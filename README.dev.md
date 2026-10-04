@@ -100,7 +100,7 @@ fields. Only the repository prefix in reflection IDs is translated for the
 vendored schema. See [fixture provenance](https://github.com/mishmish-dev/skir-elixir-gen/blob/main/fixtures/upstream/skir-golden-tests/README.md).
 
 Additional real schemas test constructors, updates, defaults, nested names,
-keyed arrays, constants, and recursive types. A test-only Cowboy server on an
+keyed arrays, constants, and recursive types. A test-only Bandit server on an
 OS-assigned localhost port exercises generated GET/POST clients through OTP
 bounded OTP HTTP transport, errors, metadata, and reflection. Four fresh BEAM processes test
 recursive defaults, codecs, reflection, and concurrent initialization. The concurrent scenario
