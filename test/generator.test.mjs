@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { generateCode } from '../src/generator.js';
 import { GENERATOR } from '../src/index.js';
 import { literal, atom, moduleInfo } from '../src/naming.js';
+import { ModuleSet } from 'skir/dist/module_set.js';
 import {
   input,
   record,
@@ -68,6 +69,74 @@ test('plugin configuration rejects unknown options and invalid namespaces', () =
     assert.equal(GENERATOR.configType.safeParse(config).success, false);
     assert.throws(() => generateCode(input([], config)));
   }
+});
+
+test('GitHub dependencies resolve transitive imports and retain reflection IDs', () => {
+  const sources = new Map([
+    ['@acme/base/types.skir', 'struct Address { city: string; }'],
+    [
+      '@acme/shared-models/accounts/user.skir',
+      'import { Address } from "@acme/base/types.skir"; struct User { address: Address; struct Pet { name: string; } pets: [Pet]; }',
+    ],
+    [
+      'user.skir',
+      'import { User } from "@acme/shared-models/accounts/user.skir"; struct Envelope { user: User; } const GUEST: User = { address: { city: "London" }, pets: [] }; method GetUser(int64): User = 12345;',
+    ],
+  ]);
+  const compiled = ModuleSet.compile(sources, 'no-cache', 'strict');
+  assert.deepEqual(compiled.errors, []);
+  const compilerInput = {
+    modules: [...compiled.modules.values()].map((m) => m.result),
+    recordMap: compiled.recordMap,
+    config: { namespace: 'My.App' },
+  };
+  const original = structuredClone(compilerInput);
+  const { files } = generateCode(compilerInput);
+  assert.deepEqual(compilerInput, original);
+  const shared = files.find(
+    (f) => f.path === 'external/acme/shared_models/accounts/user_skir.ex',
+  );
+  assert.match(
+    shared.code,
+    /defmodule My\.App\.External\.Acme\.SharedModels\.Accounts\.UserSkir\.User do/,
+  );
+  assert.match(
+    shared.code,
+    /My\.App\.External\.Acme\.Base\.TypesSkir\.Address/,
+  );
+  assert.match(
+    shared.code,
+    /key: "@acme\/shared-models\/accounts\/user\.skir:User\.Pet"/,
+  );
+  assert.match(
+    files.find((f) => f.path === 'user_skir.ex').code,
+    /response: \{:record, My\.App\.External\.Acme\.SharedModels\.Accounts\.UserSkir\.User\}/,
+  );
+  assert.deepEqual(moduleInfo('@123/456/types.skir', 'My.App'), {
+    name: 'My.App.External.N123.N456.TypesSkir',
+    path: 'external/123/456/types_skir.ex',
+  });
+  for (const [repo, module] of [
+    ['_123', 'N123'],
+    ['.123', 'N123'],
+    ['-123', 'N123'],
+    ['___', 'N'],
+  ]) {
+    assert.equal(
+      moduleInfo(`@acme/${repo}/types.skir`, 'My.App').name,
+      `My.App.External.Acme.${module}.TypesSkir`,
+    );
+  }
+  assert.throws(
+    () =>
+      generateCode(
+        input([
+          record('@acme/shared/a.skir', ['A'], 'struct', []),
+          record('external/acme/shared/a.skir', ['A'], 'struct', []),
+        ]),
+      ),
+    /collision/,
+  );
 });
 
 test('invalid compiler IR fails before producing partial output', () => {
@@ -180,6 +249,12 @@ test('invalid compiler IR fails before producing partial output', () => {
     'a\\b.skir',
     'a//b.skir',
     '@external/b.skir',
+    '@acme/repo.skir',
+    '@acme/repo/../bad.skir',
+    '@acme/repo//bad.skir',
+    '@acme/repo/@bad.skir',
+    '@ac_me/repo/bad.skir',
+    '@acme/../bad.skir',
     '123.skir',
   ]) {
     assert.throws(() =>

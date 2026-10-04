@@ -66,11 +66,37 @@ try {
   await mkdir(path.join(consumer, 'skir-src'));
   await writeFile(
     path.join(consumer, 'skir-src/message.skir'),
-    'struct Message { text: string; }\n',
+    'import { User } from "@acme/models/accounts/user.skir"; struct Message { text: string; user: User; } const GUEST: User = { address: { city: "London" }, pets: [] }; method GetUser(int64): User = 12345;\n',
+  );
+  // Use the compiler's dependency cache to exercise imports without live GitHub.
+  // The models package depends on base, testing transitive resolution as well.
+  await mkdir(path.join(consumer, 'skir-external'));
+  await writeFile(
+    path.join(consumer, 'skir-external/dependencies.json'),
+    JSON.stringify({
+      '@acme/base': {
+        packageId: '@acme/base',
+        version: 'v1.0.0',
+        dependencies: {},
+        modules: {
+          '@acme/base/types.skir': 'struct Address { city: string; }',
+        },
+      },
+      '@acme/models': {
+        packageId: '@acme/models',
+        version: 'v1.0.0',
+        dependencies: { '@acme/base': 'v1.0.0' },
+        modules: {
+          '@acme/models/accounts/user.skir':
+            'import { Address } from "@acme/base/types.skir"; struct User { address: Address; struct Pet { name: string; } pets: [Pet]; }',
+        },
+      },
+    }),
   );
   await writeFile(
     path.join(consumer, 'skir.yml'),
     JSON.stringify({
+      dependencies: { '@acme/models': 'v1.0.0' },
       generators: [
         {
           mod: 'skir-elixir-gen',
@@ -85,8 +111,18 @@ try {
     await readFile(path.join(consumer, 'lib/skirout/message_skir.ex'), 'utf8'),
     /defmodule Consumer\.MessageSkir\.Message do/,
   );
+  run(
+    'mix',
+    [
+      'run',
+      '--no-start',
+      path.join(root, 'scripts/dependency-check.exs'),
+      path.join(consumer, 'lib/skirout'),
+    ],
+    path.join(root, 'example'),
+  );
   console.log(
-    'PASS: installed npm plugin and generated Elixir bindings through the real compiler.',
+    'PASS: installed npm plugin, compiled transitive dependency bindings, codecs, constants and reflection.',
   );
 } finally {
   await rm(consumer, { recursive: true, force: true });

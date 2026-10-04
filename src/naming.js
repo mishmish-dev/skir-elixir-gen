@@ -38,7 +38,11 @@ export function moduleInfo(path, namespace) {
   ) {
     throw new Error(`Invalid schema path: ${path}`);
   }
-  const parts = path.slice(0, -5).split('/');
+  const external = path.startsWith('@');
+  if (external && !/^@[A-Za-z0-9-]+\/[A-Za-z0-9_.-]+\/.+\.skir$/.test(path)) {
+    throw new Error(`Invalid schema path: ${path}`);
+  }
+  const parts = path.replace(/^@/, 'external/').slice(0, -5).split('/');
   if (
     parts.some(
       (p) => !p || p === '.' || p === '..' || !/^[A-Za-z0-9_.-]+$/.test(p),
@@ -46,7 +50,11 @@ export function moduleInfo(path, namespace) {
   ) {
     throw new Error(`Invalid schema path: ${path}`);
   }
-  const names = parts.map(pascal);
+  const names = parts.map((part, index) =>
+    pascal(
+      external && index < 3 && /^[_.-]*(?:\d|$)/.test(part) ? `n${part}` : part,
+    ),
+  );
   names[names.length - 1] += 'Skir';
   const paths = parts.map(snake);
   paths[paths.length - 1] += '_skir.ex';
