@@ -17,7 +17,7 @@ runtime. The runtime uses built-in `JSON` and has no production dependencies.
 Add the runtime dependency to your application's `mix.exs`:
 
 ```elixir
-{:skir_elixir_client, "~> 0.2.0"}
+{:skir_elixir_client, "~> 0.2.1"}
 ```
 
 The Hex package is `skir_elixir_client`; its Mix application is `:skir_elixir_client`, and
@@ -250,9 +250,9 @@ codec metadata. See the [runtime API reference](https://hexdocs.pm/skir_elixir_c
 This unofficial backend targets Skir schemas, serialization and the SkirRPC wire
 contract. It supports local and GitHub dependency imports. Streaming is outside
 the current SkirRPC protocol. Generator and runtime versions are independent;
-the example and CI pin Hex 0.2.0. Review the [security findings](docs/SECURITY_REVIEW.md)
-before production adoption: two RPC resource-limit findings remain open in that
-pinned runtime.
+the example and CI select Hex 0.2.1 through the lockfile, incorporating the two
+RPC resource-limit fixes. Review the [security findings](docs/SECURITY_REVIEW.md)
+and validate your application deployment before production adoption.
 
 - [Runtime codecs and schema evolution](https://github.com/mishmish-dev/skir-elixir-client/blob/main/docs/CODECS.md)
 - [Runtime API reference](https://hexdocs.pm/skir_elixir_client)

@@ -13,7 +13,7 @@ defmodule SkirExample.MixProject do
         summary: [threshold: 90]
       ],
       deps: [
-        {:skir_elixir_client, "== 0.2.0"},
+        {:skir_elixir_client, "~> 0.2.1"},
         {:plug_cowboy, "~> 2.9", only: :test}
       ]
     ]

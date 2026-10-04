@@ -1,7 +1,8 @@
 # Verification
 
 The generator tests run against the published Hex runtime `skir_elixir_client`
-0.2.0, pinned exactly in `example/mix.exs` and `example/mix.lock`.
+0.2.1, selected by `example/mix.lock`. The requirement in `example/mix.exs`
+permits compatible 0.2.x patch releases.
 The split preserves each existing test in exactly one repository.
 
 | Check | Generator | Client |
@@ -41,8 +42,10 @@ serializer is an oracle for the shared wire format.
 
 Deterministic mutation checks and an independent agent review are included;
 third-party certification and exhaustive fuzzing are not claimed. The review's
-two runtime RPC resource-limit findings remain open in Hex 0.2.0. See
-[the review](docs/SECURITY_REVIEW.md) for reproduction and adoption requirements.
+two runtime RPC resource-limit findings from Hex 0.2.0 are addressed by the
+adopted Hex 0.2.1 release. Its resource-limit and live HTTP transport regression
+tests were run against the fetched dependency: 17 tests, zero failures. See
+[the review](docs/SECURITY_REVIEW.md) for the original reproductions and remaining limits.
 
 ## Upstream references
 

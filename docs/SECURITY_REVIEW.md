@@ -9,9 +9,14 @@ It does not establish that production deployment is safe.
 Reviewed `src/{index,naming,generator}.js` and every runtime source file under
 `example/deps/skir_elixir_client/lib`, including binary/JSON codecs, limits,
 unknown-field handling, RPC dispatch, Plug, HTTP transport and reflection.
-The example's dependency and lockfile both pin Hex **0.2.0**; the loaded runtime
-also reported `0.2.0`. Generator baseline: commit
+The original review used Hex **0.2.0** from the example lockfile; the loaded
+runtime also reported `0.2.0`. Generator baseline: commit
 `078b5103cb50169e28ff7b70acfe4a149d42e738` plus the current workspace.
+
+The example now selects Hex **0.2.1**, which addresses S1 and S2 below.
+Resource-limit and live HTTP transport regression tests passed against the
+fetched release: 17 tests, zero failures. The original 0.2.0 reproductions are
+retained below.
 
 The review distinguishes untrusted wire input from application-owned schemas,
 generator configuration, type descriptors, callbacks and transport URLs. No
@@ -32,7 +37,8 @@ they are not exhaustive fuzzing.
 
 ### S1 — High: oversized RPC method numbers cause expensive integer rendering
 
-**Open in runtime 0.2.0.** Runtime `lib/skir/rpc/service.ex:184–186` converts
+**Fixed in adopted runtime 0.2.1; affected runtime 0.2.0.** The reviewed
+`lib/skir/rpc/service.ex:184–186` converts
 arbitrarily long decimal method numbers, and `:214` interpolates the resulting
 big integer into an error. The JSON envelope route also accepts any integer at
 `:161`, reaching the same rendering operation. An unauthenticated request can
@@ -56,14 +62,16 @@ Observed approximately **174 ms, 688 ms and 2,743 ms**, respectively, returning
 400 with the full giant number echoed in the response. JSON bodies shaped as
 `{"method":<the same digits>,"request":0}` showed the same scaling.
 
-Bound decimal method-number length before conversion, range-check both request
-routes against the registered uint32 method-ID range, and avoid rendering invalid
-big integers into errors. This fix belongs in the separate runtime package;
-generator-only changes cannot repair the pinned release.
+Runtime 0.2.1 bounds compact decimal method-number length before conversion,
+limits JSON integer tokens before parsing, range-checks both request routes
+against the uint32 method-ID range, and avoids rendering invalid big integers
+into errors. The adopted release's regression tests cover huge method IDs and
+boundary dispatch.
 
 ### S2 — Medium: default RPC transport has no response-body allocation limit
 
-**Open in runtime 0.2.0.** Runtime `lib/skir/rpc/httpc.ex:51–57` obtains a complete
+**Fixed in adopted runtime 0.2.1; affected runtime 0.2.0.** The reviewed
+`lib/skir/rpc/httpc.ex:51–57` obtains a complete
 response from synchronous `:httpc.request`, then converts its body. Codec
 `max_bytes` checks occur only afterward for successful responses. For non-2xx
 responses, `lib/skir/rpc/service_client.ex:169–171` copies an unrestricted
@@ -77,10 +85,11 @@ a size error. This confirms the client behavior; the absence of a default HTTP
 transport allocation limit follows from source review. A live oversized HTTP
 response was not exercised during this review.
 
-Provide an explicit response-size limit enforced while receiving HTTP data,
-including chunked bodies and error responses; truncate error-body disclosure.
-Until a runtime release includes that, deployments need a custom bounded
-transport or trusted server plus independently enforced response limits.
+Runtime 0.2.1 enforces `max_response_bytes` while receiving HTTP data, including
+chunked bodies and error responses, with a default of 4,194,304 bytes. Text error
+body excerpts are capped at 1,024 bytes. The adopted release's regression tests
+cover incomplete oversized responses and exact-limit bodies across HTTP framing
+forms, plus truncated error messages.
 
 ### S3 — Low: malformed enum compiler IR can inject executable source
 
@@ -128,8 +137,9 @@ values to reach their respective encoder functions; they are not demonstrated
 exploits of the Skir adapter.
 
 Source inspection found no calls to those encoders in this generator, its example
-application, or its tests. Skir's HTTP client uses OTP `:httpc`. The locked server
-is Cowboy 2.19.0, which includes the outgoing CR/LF header rejection mitigation
+application, or its tests. Runtime 0.2.1's HTTP client uses bounded OTP TCP/TLS
+reads and does not use the affected cookie encoder. The locked server is Cowboy
+2.19.0, which includes the outgoing CR/LF header rejection mitigation
 described by the 43966 advisory for Cowboy 2.16.0 onward. Its source defaults
 `invalid_response_headers` to `error_terminate`; retain that protection in
 deployments. Do not treat this configuration-specific assessment as a general
@@ -142,5 +152,6 @@ This review did not inspect Hex/npm supply-chain provenance, all dependency
 vulnerabilities, deployment configuration, side channels, cross-origin browser
 behavior, TLS integration, live response streaming or all adversarial inputs.
 No finding above should be described as fixed solely because a regression test
-or fuzz harness was added. The runtime findings remain relevant to the exact
-0.2.0 dependency until a fixed runtime is released and adopted.
+or fuzz harness was added. The two RPC resource findings are addressed by the
+adopted 0.2.1 runtime; the cowlib advisories and application deployment validation
+remain separate concerns.

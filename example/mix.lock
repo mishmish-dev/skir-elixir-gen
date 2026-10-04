@@ -7,6 +7,6 @@
   "plug_cowboy": {:hex, :plug_cowboy, "2.9.0", "87e21e0d9054ced99c36d128f49e3ea2cd8b745fffb97de50bff99706087af4f", [:mix], [{:cowboy, "~> 2.7", [hex: :cowboy, repo: "hexpm", optional: false]}, {:cowboy_telemetry, "~> 0.3", [hex: :cowboy_telemetry, repo: "hexpm", optional: false]}, {:plug, "~> 1.18", [hex: :plug, repo: "hexpm", optional: false]}], "hexpm", "2002bafba4f3a45b55a58e68d70211b153a7ed18d37edb1ceb6e96e7a92c422e"},
   "plug_crypto": {:hex, :plug_crypto, "2.2.0", "144014737daaf485407f5ed77daeaad74d651b216a28c87543f8cc7043f8efc8", [:mix], [], "hexpm", "83a95744ab1c75876542b6fab135fcc176280e0f301a111c1f757fddcec95d2c"},
   "ranch": {:hex, :ranch, "2.3.0", "7de7b041a9a6a5091a3aa5898d66c0564be671d87db4f9d63b1b5ee775b097df", [:make, :rebar3], [], "hexpm", "6168ec49409d982f7cfbd83dd083144f6cbe67caa4036551d2f0a3ad67c9d023"},
-  "skir_elixir_client": {:hex, :skir_elixir_client, "0.2.0", "bf8126f1ad20f24a4d71c7e11dffcd7ccb7f6230c03feab6ee1a8be41c069f77", [:mix], [], "hexpm", "dd3851397fbea752133492707dfcfaf9a5a9732b59b144399737bd409f0f959f"},
+  "skir_elixir_client": {:hex, :skir_elixir_client, "0.2.1", "cc7f8d6d51737d6ec52d360e2f8b9c16e8cebdcb4b2ffe6b9bd0ff2895321463", [:mix], [], "hexpm", "f0e72a19702949a4fabde9489dbb2023369979cc4b2ba60a61a8e87a454aff07"},
   "telemetry": {:hex, :telemetry, "1.4.2", "a0cb522801dffb1c49fe6e30561badffc7b6d0e180db1300df759faa22062855", [:rebar3], [], "hexpm", "928f6495066506077862c0d1646609eed891a4326bee3126ba54b60af61febb1"},
 }

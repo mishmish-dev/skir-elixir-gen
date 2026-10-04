@@ -1,7 +1,8 @@
 # Developing skir-elixir-gen
 
-Clone this repository; the example and CI download the exact runtime release
-`skir_elixir_client` 0.2.0 from Hex. No client checkout or deploy key is required:
+Clone this repository; the example and CI download `skir_elixir_client` 0.2.1
+from Hex, selected by `example/mix.lock`. The dependency requirement permits
+compatible 0.2.x patch releases. No client checkout or deploy key is required:
 
 ```sh
 git clone https://github.com/mishmish-dev/skir-elixir-gen.git
@@ -101,7 +102,7 @@ vendored schema. See [fixture provenance](https://github.com/mishmish-dev/skir-e
 Additional real schemas test constructors, updates, defaults, nested names,
 keyed arrays, constants, and recursive types. A test-only Cowboy server on an
 OS-assigned localhost port exercises generated GET/POST clients through OTP
-`:httpc`, errors, metadata, and reflection. Four fresh BEAM processes test
+bounded OTP HTTP transport, errors, metadata, and reflection. Four fresh BEAM processes test
 recursive defaults, codecs, reflection, and concurrent initialization. The concurrent scenario
 releases workers together after a readiness barrier and mixes first access to
 defaults, codecs, and descriptors. These checks run through `test:elixir`,
