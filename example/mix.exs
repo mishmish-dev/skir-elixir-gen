@@ -11,7 +11,10 @@ defmodule SkirExample.MixProject do
         ignore_modules: [~r/^Example\.Protocol\./],
         summary: [threshold: 90]
       ],
-      deps: [{:skir, path: "../../skir-elixir-client"}, {:plug_cowboy, "~> 2.9", only: :test}]
+      deps: [
+        {:skir_elixir_client, path: "../../skir-elixir-client"},
+        {:plug_cowboy, "~> 2.9", only: :test}
+      ]
     ]
   end
 
