@@ -48,7 +48,7 @@ must be an Elixir module namespace.
 ## Elixir generated-code guide
 
 The examples below use [the example schema](example/skir-src/user.skir) with
-`namespace: Example.Protocol`. Follow the same pattern with your own namespace.
+`namespace: Example.Protocol`.
 
 ### Referring to generated symbols
 
@@ -63,9 +63,8 @@ alias Example.Protocol.UserSkir.{User, Event}
 alias Example.Protocol.UserSkir.User.Pet
 ```
 
-GitHub schema dependencies use Skir's normal [`dependencies` configuration](https://skir.build/docs/dependencies),
-including transitive imports. An import from `@acme/shared-models/accounts/user.skir`
-generates `MyApp.Protocol.External.Acme.SharedModels.Accounts.UserSkir.User` in
+An import from `@acme/shared-models/accounts/user.skir` generates
+`MyApp.Protocol.External.Acme.SharedModels.Accounts.UserSkir.User` in
 `external/acme/shared_models/accounts/user_skir.ex`. Numeric or punctuation-only
 owner/repository names gain an `N` prefix in Elixir module names. The original
 import path remains in reflection IDs. Names that normalize to the same module
@@ -179,13 +178,8 @@ User.decode(binary)      # {:ok, %User{}}; JSON bytes are also accepted
 ```
 
 Non-bang serialization functions return `{:error, %Skir.Error{reason: atom,
-path: [...], message: string}}` on validated input failures. Unexpected programming
-errors are not swallowed. Struct modules additionally expose `new/1`.
-
-See the [runtime codec guide](https://github.com/mishmish-dev/skir-elixir-client/blob/main/docs/CODECS.md)
-for primitive mappings, recursive defaults, encoding rules and resource limits,
-and the [runtime API reference](https://hexdocs.pm/skir_elixir_client/Skir.html)
-for serializing primitive and composite type handles directly.
+path: [...], message: string}}` on validated input failures. Struct modules
+additionally expose `new/1`.
 
 ### Constants
 
@@ -220,10 +214,7 @@ client = ServiceClient.new!("https://api.example.com/rpc")
 Phoenix/Plug applications can mount `Skir.RPC.Plug` with `forward "/rpc",
 Skir.RPC.Plug, service: &MyApp.RPC.service/0`. Studio (`?studio`), method
 reflection (`?list`), controlled/unknown errors, request metadata, the compact
-SkirRPC HTTP wire format, and a pluggable client transport are implemented. See
-[the client RPC guide](https://hexdocs.pm/skir_elixir_client/skirrpc.html) for the complete API and
-[the client parity audit](https://hexdocs.pm/skir_elixir_client/skirrpc_parity.html) for the official-runtime parity audit.
-
+SkirRPC HTTP wire format, and a pluggable client transport are implemented.
 ### Reflection
 
 Inspect any generated type with `Skir.RPC.TypeDescriptor`:
